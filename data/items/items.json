@@ -1,0 +1,106 @@
+{
+  "SWORD_IRON": {
+    "nombre": "Espada de Hierro",
+    "tipo": "arma",
+    "tipo_arma": "espada",
+    "poder": 5,
+    "rango": [1, 1],
+    "precision_bonus": 0,
+    "critico_bonus": 0,
+    "icono": "sword_iron"
+  },
+  "SWORD_STEEL": {
+    "nombre": "Espada de Acero",
+    "tipo": "arma",
+    "tipo_arma": "espada",
+    "poder": 8,
+    "rango": [1, 1],
+    "precision_bonus": -5,
+    "critico_bonus": 0,
+    "icono": "sword_steel"
+  },
+  "AXE_IRON": {
+    "nombre": "Hacha de Hierro",
+    "tipo": "arma",
+    "tipo_arma": "hacha",
+    "poder": 8,
+    "rango": [1, 1],
+    "precision_bonus": -10,
+    "critico_bonus": 5,
+    "icono": "axe_iron"
+  },
+  "LANCE_IRON": {
+    "nombre": "Lanza de Hierro",
+    "tipo": "arma",
+    "tipo_arma": "lanza",
+    "poder": 6,
+    "rango": [1, 1],
+    "precision_bonus": 5,
+    "critico_bonus": 0,
+    "icono": "lance_iron"
+  },
+  "LANCE_SILVER": {
+    "nombre": "Lanza de Plata",
+    "tipo": "arma",
+    "tipo_arma": "lanza",
+    "poder": 10,
+    "rango": [1, 1],
+    "precision_bonus": 5,
+    "critico_bonus": 5,
+    "icono": "lance_silver"
+  },
+  "BOW_IRON": {
+    "nombre": "Arco de Hierro",
+    "tipo": "arma",
+    "tipo_arma": "arco",
+    "poder": 6,
+    "rango": [2, 3],
+    "precision_bonus": 5,
+    "critico_bonus": 0,
+    "icono": "bow_iron"
+  },
+  "STAFF_DARK": {
+    "nombre": "Bastón Oscuro",
+    "tipo": "arma",
+    "tipo_arma": "magia",
+    "poder": 7,
+    "rango": [1, 2],
+    "precision_bonus": 5,
+    "critico_bonus": 0,
+    "icono": "staff_dark"
+  },
+  "POTION": {
+    "nombre": "Poción",
+    "tipo": "consumible",
+    "tipo_arma": null,
+    "poder": 0,
+    "rango": [0, 0],
+    "cura": 20,
+    "precision_bonus": 0,
+    "critico_bonus": 0,
+    "icono": "potion"
+  },
+  "POTION_G": {
+    "nombre": "Poción Grande",
+    "tipo": "consumible",
+    "tipo_arma": null,
+    "poder": 0,
+    "rango": [0, 0],
+    "cura": 35,
+    "precision_bonus": 0,
+    "critico_bonus": 0,
+    "icono": "potion_g"
+  },
+  "ANTIDOTE": {
+    "nombre": "Antídoto",
+    "tipo": "consumible",
+    "tipo_arma": null,
+    "poder": 0,
+    "rango": [0, 0],
+    "cura": 5,
+    "cura_estado": "veneno",
+    "precision_bonus": 0,
+    "critico_bonus": 0,
+    "icono": "antidote"
+  }
+}

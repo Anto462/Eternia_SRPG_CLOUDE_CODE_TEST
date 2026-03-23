@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -E \"\\\\.\\(png|jpg|jpeg|wav|mp3|ogg\\)$\")",
+      "Bash(while read:*)",
+      "Bash(do echo:*)",
+      "Read(//c/Users/Usuario/Downloads/cloude/projects test/EterniaSrpg/**)",
+      "Bash(done)",
+      "Bash(find 'c:/Users/Usuario/Downloads/cloude/projects test/EterniaSrpg/data/maps/' -name *.json -type f)"
+    ]
+  }
+}

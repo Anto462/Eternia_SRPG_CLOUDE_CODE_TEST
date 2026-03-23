@@ -1,0 +1,29 @@
+{
+  "name": "Paso del Bosque",
+  "grid_generator": "forest_pass",
+  "thrones": {
+    "aliado":  [2,  9],
+    "enemigo": [22, 9]
+  },
+  "ally_spawns": [
+    {"unit_id": "HERO_ALLY",   "bando": "aliado", "pos": [3,  8]},
+    {"unit_id": "CLERIC_ALLY", "bando": "aliado", "pos": [3, 10]},
+    {"unit_id": "ARCHER_ALLY", "bando": "aliado", "pos": [4,  9]}
+  ],
+  "enemy_spawns": [
+    {"pos": [20,  7]},
+    {"pos": [21,  9]},
+    {"pos": [20, 11]},
+    {"pos": [19,  5]},
+    {"pos": [22, 13]}
+  ],
+  "items_spawn": [
+    {"pos": [11, 4],  "item_id": "POTION_G"},
+    {"pos": [11, 14], "item_id": "ANTIDOTE"},
+    {"pos": [13, 9],  "item_id": "SWORD_STEEL"}
+  ],
+  "rules": {
+    "turn_limit": null,
+    "neutral_monsters": false
+  }
+}

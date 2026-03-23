@@ -1,48 +1,39 @@
-import sys, os
+# main.py — EterniaSrpg
+# Punto de entrada limpio: solo inicialización + game loop.
+
+import sys
+import os
 import pygame
 
-print("CWD:", os.getcwd())
-print("sys.path[0]:", sys.path[0])
+# Asegurar que el directorio del proyecto está en sys.path
+_ROOT = os.path.dirname(os.path.abspath(__file__))
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
 
 import constants as C
-print("constants ->", C.__file__)
-
-import ui
-import ui
-print("ui ->", ui.__file__)
-print("ui keys sample:", [k for k in dir(ui) if "UI" in k or "Render" in k or k in ("pygame","C")])
-
-import inspect
-
-
-import game_state
-print("game_state ->", game_state.__file__)
-
-import ai
-print("ai ->", ai.__file__)
-
-from ui import UIRenderer
-from game_state import GameState
-from ai import AIController
+from ui.renderer      import UIRenderer
+from core.game_state  import GameState
+from core.ai          import AIController
+from loaders.audio_loader import AudioLoader
 
 
 def main():
     pygame.init()
-    screen = pygame.display.set_mode((C.ANCHO_PANTALLA, C.ALTO_PANTALLA))
     pygame.display.set_caption(C.TITULO)
-
-    clock = pygame.time.Clock()
+    screen = pygame.display.set_mode((C.ANCHO_PANTALLA, C.ALTO_PANTALLA))
+    clock  = pygame.time.Clock()
 
     fonts = {
-        "std": pygame.font.SysFont("Arial", 20),
-        "mini": pygame.font.SysFont("Arial", 16),
-        "title": pygame.font.SysFont("Arial", 40, bold=True),
+        "std":      pygame.font.SysFont("Arial", 20),
+        "mini":     pygame.font.SysFont("Arial", 15),
+        "title":    pygame.font.SysFont("Arial", 40, bold=True),
         "ui_title": pygame.font.SysFont("Arial", 22, bold=True),
     }
 
-    ui_r = UIRenderer(fonts)
-    state = GameState(modo_juego="PVP")
-    ai_c = AIController(interval_frames=30)
+    audio = AudioLoader(sfx_volume=0.55)
+    ui_r  = UIRenderer(fonts)
+    state = GameState(modo_juego="PVP", audio=audio)
+    ai_c  = AIController(interval_frames=25)
 
     running = True
     while running:

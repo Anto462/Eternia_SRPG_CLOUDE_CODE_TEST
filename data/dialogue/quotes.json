@@ -1,0 +1,49 @@
+{
+  "HERO_ALLY": {
+    "attack":  ["¡Por Eternia!", "No te me escapas.", "¡Vamos con todo!", "¡Esto termina aquí!"],
+    "skill":   ["¡Ahora!", "Tiempo de rematar.", "¡Golpe feroz!"],
+    "crit":    ["¡AHORA!", "¡Rompe!", "¡Sin piedad!"],
+    "kill":    ["Se acabó.", "Caíste.", "Siguiente."],
+    "death":   ["No… todavía no…", "No puedo… caer aquí…"],
+    "heal":    ["Gracias.", "Siempre a tiempo."],
+    "awakening": ["¡Siento el poder!", "¡AWAKENING!", "¡Esto no ha terminado!"]
+  },
+  "CLERIC_ALLY": {
+    "attack":  ["No quería hacer esto…", "Perdóname.", "¡Perdóname…!"],
+    "skill":   ["Resiste…", "Te curo, rápido.", "¡Sanaré tus heridas!"],
+    "crit":    ["¡No me queda otra!"],
+    "kill":    ["Que descansen en paz."],
+    "death":   ["Que… los dioses me perdonen…"],
+    "heal":    ["Aguanta.", "Ya estás mejor."],
+    "awakening": ["¡Gracia Divina!", "El poder sagrado me llena."]
+  },
+  "ARCHER_ALLY": {
+    "attack":  ["Al blanco.", "No fallo.", "¡Fuego!"],
+    "skill":   ["¡Disparo certero!", "Sin escapatoria."],
+    "crit":    ["¡Directo al corazón!"],
+    "kill":    ["Blanco eliminado."],
+    "death":   ["Maldita sea…"],
+    "awakening": ["¡Ojo de Águila!", "No hay lugar donde esconderse."]
+  },
+  "BANDIT_ENEMY": {
+    "attack":  ["Dame todo lo que tengas.", "¡Te partí!", "¡A robar!"],
+    "skill":   ["¡Coge eso!"],
+    "crit":    ["¡GOLPETAZO!"],
+    "kill":    ["¡Ja!", "Otro menos."],
+    "death":   ["¡Malditos…!"]
+  },
+  "ORC_ENEMY": {
+    "attack":  ["¡APLASTO!", "¡ORCO FUERTE!", "¡MACHACA!"],
+    "skill":   ["¡ORCO GOLPEA!"],
+    "crit":    ["¡RAAAAH!"],
+    "kill":    ["¡ORCO GANA!"],
+    "death":   ["¡Orco… caer…!"]
+  },
+  "MAGE_ENEMY": {
+    "attack":  ["El oscuro poder te consume.", "Resistir es inútil.", "Abraza la oscuridad."],
+    "skill":   ["¡Rayo Oscuro!", "Que el caos te envuelva."],
+    "crit":    ["¡Poder sin límites!"],
+    "kill":    ["Polvo serás.", "Vuelve a la nada."],
+    "death":   ["Esto… no es posible…"]
+  }
+}

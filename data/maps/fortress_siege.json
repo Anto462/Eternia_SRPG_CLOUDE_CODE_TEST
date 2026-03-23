@@ -1,0 +1,30 @@
+{
+  "name": "Asedio a la Fortaleza",
+  "grid_generator": "fortress_siege",
+  "thrones": {
+    "aliado":  [2, 16],
+    "enemigo": [22, 2]
+  },
+  "ally_spawns": [
+    {"unit_id": "HERO_ALLY",   "bando": "aliado", "pos": [3, 15]},
+    {"unit_id": "CLERIC_ALLY", "bando": "aliado", "pos": [4, 16]},
+    {"unit_id": "ARCHER_ALLY", "bando": "aliado", "pos": [2, 14]}
+  ],
+  "enemy_spawns": [
+    {"pos": [21,  2]},
+    {"pos": [23,  1]},
+    {"pos": [22,  4]},
+    {"pos": [20,  3]},
+    {"pos": [19,  2]},
+    {"pos": [22,  6]}
+  ],
+  "items_spawn": [
+    {"pos": [5,  12], "item_id": "POTION_G"},
+    {"pos": [10,  8], "item_id": "LANCE_SILVER"},
+    {"pos": [15,  5], "item_id": "ANTIDOTE"}
+  ],
+  "rules": {
+    "turn_limit": null,
+    "neutral_monsters": false
+  }
+}

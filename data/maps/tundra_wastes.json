@@ -1,0 +1,30 @@
+{
+  "name": "Páramo Congelado",
+  "grid_generator": "tundra_wastes",
+  "thrones": {
+    "aliado":  [2,  2],
+    "enemigo": [22, 15]
+  },
+  "ally_spawns": [
+    {"unit_id": "HERO_ALLY",   "bando": "aliado", "pos": [3,  3]},
+    {"unit_id": "CLERIC_ALLY", "bando": "aliado", "pos": [4,  2]},
+    {"unit_id": "ARCHER_ALLY", "bando": "aliado", "pos": [2,  4]}
+  ],
+  "enemy_spawns": [
+    {"pos": [21, 14]},
+    {"pos": [22, 16]},
+    {"pos": [20, 12]},
+    {"pos": [23, 15]},
+    {"pos": [19, 10]},
+    {"pos": [22, 13]}
+  ],
+  "items_spawn": [
+    {"pos": [8,   6], "item_id": "POTION_G"},
+    {"pos": [12, 10], "item_id": "ANTIDOTE"},
+    {"pos": [16,  4], "item_id": "SWORD_STEEL"}
+  ],
+  "rules": {
+    "turn_limit": null,
+    "neutral_monsters": false
+  }
+}

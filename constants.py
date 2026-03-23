@@ -37,10 +37,17 @@ DORADO_COFRE = (255, 215, 0)
 
 PURPURA_TRONO = (148, 0, 211)  # Trono
 
+# Sprites / Animación
+TILE_ORIGINAL_SIZE = 16   # tamaño original de cada frame en el pack (16×16 mini world)
+ANIM_SPEED_MAP     = 18   # ticks de juego por frame de animación en mapa (~3fps a 60fps)
+ANIM_SPEED_FX      = 3    # ticks de juego por frame de animación FX (~20fps a 60fps)
+
 # Terreno
+# costo: puntos de movimiento que cuesta entrar
+# esquive: bonus de esquive (%) que da al defensor que está en esta casilla
 INFO_TERRENO = {
-    0: {"color": (100, 220, 100), "costo": 1},
-    1: {"color": (30, 120, 30),   "costo": 2},
-    2: {"color": (120, 120, 120), "costo": 999},
-    3: {"color": (50, 100, 200),  "costo": 999},
+    0: {"color": (100, 220, 100), "costo": 1,   "esquive": 0},   # Hierba
+    1: {"color": (30, 120, 30),   "costo": 2,   "esquive": 20},  # Bosque
+    2: {"color": (120, 120, 120), "costo": 999, "esquive": 0},   # Muro/Montaña (impassable)
+    3: {"color": (50, 100, 200),  "costo": 999, "esquive": 0},   # Agua (impassable)
 }

@@ -1,0 +1,29 @@
+{
+  "name": "Cruce del Río",
+  "grid_generator": "river_crossing",
+  "thrones": {
+    "aliado":  [2,  9],
+    "enemigo": [22, 9]
+  },
+  "ally_spawns": [
+    {"unit_id": "HERO_ALLY",   "bando": "aliado", "pos": [3,  7]},
+    {"unit_id": "CLERIC_ALLY", "bando": "aliado", "pos": [3, 11]},
+    {"unit_id": "ARCHER_ALLY", "bando": "aliado", "pos": [4,  9]}
+  ],
+  "enemy_spawns": [
+    {"pos": [20,  6]},
+    {"pos": [21,  9]},
+    {"pos": [20, 12]},
+    {"pos": [22,  4]},
+    {"pos": [23, 14]}
+  ],
+  "items_spawn": [
+    {"pos": [12,  2],  "item_id": "POTION_G"},
+    {"pos": [12, 15],  "item_id": "POTION_G"},
+    {"pos": [12,  9],  "item_id": "LANCE_SILVER"}
+  ],
+  "rules": {
+    "turn_limit": 35,
+    "neutral_monsters": false
+  }
+}

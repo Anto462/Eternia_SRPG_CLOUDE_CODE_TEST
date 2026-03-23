@@ -1,0 +1,30 @@
+{
+  "name": "Fortaleza de la Montaña",
+  "grid_generator": "mountain_keep",
+  "thrones": {
+    "aliado":  [2, 15],
+    "enemigo": [22, 2]
+  },
+  "ally_spawns": [
+    {"unit_id": "HERO_ALLY",   "bando": "aliado", "pos": [3, 14]},
+    {"unit_id": "CLERIC_ALLY", "bando": "aliado", "pos": [4, 15]},
+    {"unit_id": "ARCHER_ALLY", "bando": "aliado", "pos": [3, 16]}
+  ],
+  "enemy_spawns": [
+    {"pos": [20,  3]},
+    {"pos": [21,  2]},
+    {"pos": [22,  4]},
+    {"pos": [18,  1]},
+    {"pos": [19,  5]},
+    {"pos": [23,  6]}
+  ],
+  "items_spawn": [
+    {"pos": [7,  13], "item_id": "POTION_G"},
+    {"pos": [7,  4],  "item_id": "ANTIDOTE"},
+    {"pos": [12,  8], "item_id": "SWORD_STEEL"}
+  ],
+  "rules": {
+    "turn_limit": 40,
+    "neutral_monsters": false
+  }
+}
