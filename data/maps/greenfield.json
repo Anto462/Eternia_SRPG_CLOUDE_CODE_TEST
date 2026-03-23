@@ -24,16 +24,18 @@
     "aliado":  [2, 2],
     "enemigo": [22, 2]
   },
-  "spawns": [
-    {"unit_id": "HERO_ALLY",    "bando": "aliado",  "pos": [5, 5]},
-    {"unit_id": "CLERIC_ALLY",  "bando": "aliado",  "pos": [6, 6]},
-    {"unit_id": "BANDIT_ENEMY", "bando": "enemigo", "pos": [10, 5]},
-    {"unit_id": "ORC_ENEMY",    "bando": "enemigo", "pos": [12, 8]},
-    {"unit_id": "DUMMY_HP",     "bando": "enemigo", "pos": [9, 9]}
+  "ally_spawns": [
+    {"unit_id": "HERO_ALLY",   "bando": "aliado", "pos": [5, 5]},
+    {"unit_id": "CLERIC_ALLY", "bando": "aliado", "pos": [6, 6]}
+  ],
+  "enemy_spawns": [
+    {"pos": [10, 5]},
+    {"pos": [12, 8]},
+    {"pos": [9,  9]}
   ],
   "items_spawn": [
-    {"pos": [8, 8],  "item_id": "LANCE_SILVER"},
-    {"pos": [6, 8],  "item_id": "POTION_G"}
+    {"pos": [8, 8], "item_id": "LANCE_SILVER"},
+    {"pos": [6, 8], "item_id": "POTION_G"}
   ],
   "rules": {
     "neutral_monsters": false,

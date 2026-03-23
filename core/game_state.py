@@ -12,7 +12,8 @@ import pygame
 import constants as C
 
 from systems.map_data      import (pick_random_map, pick_next_map,
-                                    pick_enemies_for_difficulty, get_difficulty_tier)
+                                    pick_enemies_for_difficulty, get_difficulty_tier,
+                                    MAPS)
 from systems.items         import make_item
 from systems.units         import make_unit
 from systems.dialogue_system import DialogueSystem
@@ -20,6 +21,12 @@ from core.pathfinding      import obtener_movimientos_validos, get_terrain_esqui
 from core.combat           import (resolver_combate, obtener_enemigos_en_rango,
                                    calcular_preview)
 from ui.fx                 import FXManager
+from loaders.sprite_loader import get_fx_frames
+from systems.score_system  import ScoreTracker, load_scores
+from systems.rogue_system  import (RogueRunState, pick_relic_choices,
+                                   get_hero_pool, MIN_HEROES, MAX_HEROES,
+                                   ALL_RELICS)
+from systems.save_system   import save_run, load_save, delete_save, has_save
 
 
 GRILLA_ANCHO = C.GRILLA_ANCHO
@@ -37,6 +44,17 @@ class GameState:
         # Progresión de mapas
         self.map_number    = 0        # sube 1 por cada victoria
         self.last_map_name = ""       # evita repetir el mismo mapa
+
+        # Puntuación
+        self.score = ScoreTracker()
+
+        # Roguelike
+        self.rogue            = RogueRunState()
+        self.hero_pool        = get_hero_pool()
+        self._hero_cursor     = 0           # índice en hero_pool
+        self._selected_heroes: list = []    # HeroOption elegidos
+        self.relic_choices: list    = []    # 3 reliquias a mostrar
+        self._relic_cursor    = 0
 
         self.estado_juego = "MENU_PRINCIPAL"
         if self.audio:
@@ -98,17 +116,139 @@ class GameState:
     # ===================================================
     # Inicio de partida
     # ===================================================
+    # ===================================================
+    # Sistema de guardado
+    # ===================================================
+    def continue_saved_run(self):
+        """Restaura una run guardada desde data/save.json."""
+        data = load_save()
+        if not data:
+            self._open_hero_selection()
+            return
+
+        self.map_number    = data.get("map_number", 0)
+        self.last_map_name = data.get("last_map_name", "")
+        self.modo_juego    = data.get("modo_juego", self.modo_juego)
+
+        # Restaurar puntuación
+        sc = data.get("score", {})
+        self.score.total_score   = sc.get("total", 0)
+        self.score.kills         = sc.get("kills", 0)
+        self.score.maps_cleared  = sc.get("maps_cleared", 0)
+
+        # Restaurar roguelike
+        rogue_data = data.get("rogue", {})
+        self.rogue.selected_heroes  = rogue_data.get("selected_heroes", [])
+        self.rogue.score_multiplier = rogue_data.get("score_multiplier", 1.0)
+        relic_ids = [r["relic_id"] for r in rogue_data.get("acquired_relics", [])]
+        self.rogue.acquired_relics  = [r for r in ALL_RELICS if r.relic_id in relic_ids]
+
+        # Cargar el mapa actual
+        mapa = next((m for m in MAPS if m.name == self.last_map_name), None)
+        if mapa is None:
+            mapa = pick_random_map()
+        self._load_map(mapa)
+
+        # Restaurar HP/MP de aliados según save
+        saved_allies = {u["unit_id"]: u for u in data.get("aliados", [])}
+        for u in self.unidades:
+            if u.bando == "aliado":
+                uid = getattr(u, "unit_id", u.nombre)
+                if uid in saved_allies:
+                    s = saved_allies[uid]
+                    u.hp_actual  = min(s.get("hp_actual", u.hp_actual), u.max_hp)
+                    u.mp_actual  = min(s.get("mp_actual", u.mp_actual), u.max_mp)
+                    u.nivel      = s.get("nivel", u.nivel)
+
+    # ===================================================
+    # Roguelike — selección de grupo
+    # ===================================================
+    def _open_hero_selection(self):
+        self.rogue           = RogueRunState()
+        self._hero_cursor    = 0
+        self._selected_heroes = []
+        self.estado_juego    = "MENU_SELECCION_GRUPO"
+        if self.audio:
+            self.audio.play("menu_open")
+
+    def _handle_hero_selection(self, key):
+        pool = self.hero_pool
+        if key == pygame.K_LEFT:
+            self._hero_cursor = (self._hero_cursor - 1) % len(pool)
+            if self.audio: self.audio.play("cursor_move")
+        elif key == pygame.K_RIGHT:
+            self._hero_cursor = (self._hero_cursor + 1) % len(pool)
+            if self.audio: self.audio.play("cursor_move")
+        elif key in [pygame.K_RETURN, pygame.K_SPACE]:
+            hero = pool[self._hero_cursor]
+            if hero not in self._selected_heroes:
+                if len(self._selected_heroes) < MAX_HEROES:
+                    self._selected_heroes.append(hero)
+                    if self.audio: self.audio.play("menu_confirm")
+            else:
+                self._selected_heroes.remove(hero)
+                if self.audio: self.audio.play("menu_cancel")
+        elif key == pygame.K_f and len(self._selected_heroes) >= MIN_HEROES:
+            # Confirmar grupo y empezar
+            self.rogue.selected_heroes = [h.unit_id for h in self._selected_heroes]
+            self.start_new_game()
+        elif key == pygame.K_ESCAPE:
+            self.estado_juego = "MENU_PRINCIPAL"
+            if self.audio: self.audio.play("menu_cancel")
+
+    # ===================================================
+    # Roguelike — selección de reliquia
+    # ===================================================
+    def _open_relic_selection(self):
+        self.relic_choices  = pick_relic_choices(self.rogue.acquired_relics)
+        self._relic_cursor  = 0
+        self.estado_juego   = "MENU_MEJORAS"
+        if self.audio:
+            self.audio.play("menu_open")
+
+    def _handle_relic_selection(self, key):
+        if not self.relic_choices:
+            self._do_advance()
+            return
+        if key == pygame.K_LEFT:
+            self._relic_cursor = (self._relic_cursor - 1) % len(self.relic_choices)
+            if self.audio: self.audio.play("cursor_move")
+        elif key == pygame.K_RIGHT:
+            self._relic_cursor = (self._relic_cursor + 1) % len(self.relic_choices)
+            if self.audio: self.audio.play("cursor_move")
+        elif key in [pygame.K_RETURN, pygame.K_SPACE]:
+            relic = self.relic_choices[self._relic_cursor]
+            self.rogue.add_relic(relic)
+            for u in self.unidades_vivas:
+                if u.bando == "aliado":
+                    self.rogue.apply_relics_to_unit(u)
+            self._log(f"Reliquia: {relic.nombre}")
+            if self.audio: self.audio.play("level_up")
+            self._do_advance()
+
+    # ===================================================
+    # Inicio de partida
+    # ===================================================
     def start_new_game(self):
         """Reinicia desde cero (mapa 1, dificultad fácil)."""
         self.map_number    = 0
         self.last_map_name = ""
+        self.score.reset()
         self._load_map(pick_random_map())
 
-    def advance_to_next_map(self):
-        """Progresa al siguiente mapa con dificultad creciente."""
-        self.map_number   += 1
-        next_map           = pick_next_map(self.map_number, self.last_map_name)
+    def _do_advance(self):
+        """Carga el siguiente mapa efectivamente (llamado tras elegir reliquia o directo)."""
+        self.map_number += 1
+        next_map         = pick_next_map(self.map_number, self.last_map_name)
         self._load_map(next_map)
+
+    def advance_to_next_map(self):
+        """Registra puntos y abre menú de mejoras antes de cargar el siguiente mapa."""
+        hp_total = sum(u.hp_actual for u in self.unidades_vivas if u.bando == "aliado")
+        tier     = get_difficulty_tier(self.map_number)
+        self.score.on_map_clear(hp_total, tier)
+        self.score.save_if_highscore(self.modo_juego)
+        self._open_relic_selection()
 
     def _load_map(self, map_def):
         self.fx.clear()
@@ -164,6 +304,9 @@ class GameState:
         if self.audio:
             self.audio.play_bgm("exploration.mp3")
 
+        self.score.set_difficulty(tier)
+        save_run(self)          # auto-save al cargar cada mapa
+
         tier_label = tier.upper()
         self._log(f"--- {map_def.name} [Mapa {self.map_number+1}] [{tier_label}] ---")
 
@@ -172,6 +315,9 @@ class GameState:
     # ===================================================
     def end_turn(self):
         self.idx_fase = (self.idx_fase + 1) % len(self.FASES)
+
+        if self.audio:
+            self.audio.play("turn_start")
 
         self.timer_transicion = 90
         self.texto_transicion = f"TURNO {self.fase_actual.upper()}"
@@ -194,13 +340,16 @@ class GameState:
     # Condiciones de victoria
     # ===================================================
     def check_end_conditions(self):
-        if self.estado_juego in ["MENU_PRINCIPAL","MENU_CONTROLES","GAME_OVER","VICTORIA","PAUSA"]:
+        if self.estado_juego in ["MENU_PRINCIPAL","MENU_CONTROLES","GAME_OVER","VICTORIA","PAUSA",
+                                  "MENU_SELECCION_GRUPO","MENU_MEJORAS"]:
             return
         vivos    = self.unidades_vivas
         aliados  = [u for u in vivos if u.bando == "aliado"]
         enemigos = [u for u in vivos if u.bando == "enemigo"]
         if not aliados:
             self.estado_juego = "GAME_OVER"
+            self.score.save_if_highscore(self.modo_juego)
+            delete_save()           # run perdida → borra el guardado
             if self.audio:
                 self.audio.play_bgm("game_over.mp3")
         elif not enemigos:
@@ -223,12 +372,24 @@ class GameState:
         if self.estado_juego == "MENU_PRINCIPAL":
             if k == pygame.K_1:
                 self.modo_juego = "PVP"
-                self.start_new_game()
+                self._open_hero_selection()
             elif k == pygame.K_2:
                 self.modo_juego = "PVE"
-                self.start_new_game()
+                self._open_hero_selection()
             elif k == pygame.K_3:
                 self.estado_juego = "MENU_CONTROLES"
+            elif k == pygame.K_4 and has_save():
+                self.continue_saved_run()
+            return
+
+        # --- SELECCIÓN DE GRUPO ---
+        if self.estado_juego == "MENU_SELECCION_GRUPO":
+            self._handle_hero_selection(k)
+            return
+
+        # --- MEJORAS ENTRE MAPAS ---
+        if self.estado_juego == "MENU_MEJORAS":
+            self._handle_relic_selection(k)
             return
 
         # --- MENÚ CONTROLES ---
@@ -240,7 +401,7 @@ class GameState:
         # --- FIN DE PARTIDA ---
         if self.estado_juego == "VICTORIA":
             if k == pygame.K_r:
-                self.advance_to_next_map()
+                self.advance_to_next_map()   # → abre MENU_MEJORAS → _do_advance
             elif k == pygame.K_ESCAPE:
                 self.estado_juego = "MENU_PRINCIPAL"
                 if self.audio:
@@ -316,6 +477,9 @@ class GameState:
     # Escape
     # ===================================================
     def _handle_escape(self):
+        if self.audio:
+            self.audio.play("menu_cancel")
+
         if self.estado_juego == "SELECCION_SKILL_TARGET":
             self.estado_juego   = "MENU_SKILLS"
             self.targets        = []
@@ -391,6 +555,8 @@ class GameState:
                     self.casillas_mov = obtener_movimientos_validos(u, self.MAPA_DATA, self.unidades)
                     self.casillas_mov.append((u.x, u.y))
                     self.estado_juego = "SELECCIONADO"
+                    if self.audio:
+                        self.audio.play("unit_select")
                     return
 
         # SELECCIONADO → confirmar movimiento
@@ -402,6 +568,8 @@ class GameState:
                 )
                 if not bloqueado:
                     self.sel_unidad.x, self.sel_unidad.y = cx, cy
+                    if self.audio:
+                        self.audio.play("unit_move")
 
                     # Pickup ítem
                     if (cx, cy) in self.ITEMS_SUELO:
@@ -423,11 +591,27 @@ class GameState:
                 esq_def = get_terrain_esquive(self.MAPA_DATA, t.x, t.y)
                 esq_atq = get_terrain_esquive(self.MAPA_DATA, self.sel_unidad.x, self.sel_unidad.y)
 
+                if self.audio:
+                    self.audio.play("attack")
+                # VFX impacto en el defensor
+                tx_px = t.x * C.TAMANO_TILE + C.TAMANO_TILE // 2
+                ty_px = t.y * C.TAMANO_TILE + C.TAMANO_TILE // 2
+                self.fx.add_animation(get_fx_frames("attack"), tx_px, ty_px)
+
                 result = resolver_combate(self.sel_unidad, t,
                                           add_fx=self.fx.add_text,
                                           terreno_esquive_def=esq_def,
                                           terreno_esquive_atq=esq_atq)
                 self._process_combat_result(self.sel_unidad, t, result)
+
+                # VFX muerte
+                if result.get("mato_def"):
+                    self.fx.add_animation(get_fx_frames("death"), tx_px, ty_px)
+                if result.get("mato_atq"):
+                    ax_px = self.sel_unidad.x * C.TAMANO_TILE + C.TAMANO_TILE // 2
+                    ay_px = self.sel_unidad.y * C.TAMANO_TILE + C.TAMANO_TILE // 2
+                    self.fx.add_animation(get_fx_frames("death"), ax_px, ay_px)
+
                 self.sel_unidad.ha_actuado = True
                 self.sel_unidad   = None
                 self.targets      = []
@@ -461,8 +645,12 @@ class GameState:
         if result.get("mato_def"):
             self._log(f"{defen.nombre} fue derrotado.")
             self.dialogue.trigger(atq, "kill")
+            if atq.bando == "aliado":
+                self.score.on_kill()
         if result.get("mato_atq"):
             self._log(f"{atq.nombre} fue derrotado en el contraataque.")
+            if atq.bando == "aliado":
+                self.score.on_ally_lost()
 
     # ===================================================
     # Menú acción
@@ -480,19 +668,29 @@ class GameState:
                 self.cursor_x, self.cursor_y = t.x, t.y
                 self.estado_juego = "SELECCION_OBJETIVO"
                 self._update_battle_preview()
+                if self.audio:
+                    self.audio.play("menu_open")
             else:
                 self.fx.add_text(self.sel_unidad.x * 32, self.sel_unidad.y * 32,
                                   "Sin objetivo", C.GRIS_INACTIVO)
+                if self.audio:
+                    self.audio.play("error")
 
         elif key == pygame.K_h:  # Habilidad
             self.estado_juego = "MENU_SKILLS"
+            if self.audio:
+                self.audio.play("menu_open")
 
         elif key == pygame.K_i:  # Inventario
             self.estado_juego = "MENU_INVENTARIO"
+            if self.audio:
+                self.audio.play("menu_open")
 
         elif key == pygame.K_e:  # Esperar
             self.sel_unidad.ha_actuado = True
             self._log(f"{self.sel_unidad.nombre} esperó.")
+            if self.audio:
+                self.audio.play("unit_wait")
             self.sel_unidad   = None
             self.targets      = []
             self.estado_juego = "NEUTRAL"
@@ -502,6 +700,11 @@ class GameState:
             if self.sel_unidad.awakened:
                 self.dialogue.trigger(self.sel_unidad, "awakening")
                 self._log(f"{self.sel_unidad.nombre} activó Awakening.")
+                if self.audio:
+                    self.audio.play("awakening")
+                awk_px = self.sel_unidad.x * C.TAMANO_TILE + C.TAMANO_TILE // 2
+                awk_py = self.sel_unidad.y * C.TAMANO_TILE + C.TAMANO_TILE // 2
+                self.fx.add_animation(get_fx_frames("awakening"), awk_px, awk_py)
 
         elif key == pygame.K_c:  # Conquistar
             if self.sel_unidad.es_heroe:
@@ -569,7 +772,8 @@ class GameState:
 
         self.check_end_conditions()
 
-        if self.estado_juego in ["MENU_PRINCIPAL","MENU_CONTROLES","GAME_OVER","VICTORIA","PAUSA"]:
+        if self.estado_juego in ["MENU_PRINCIPAL","MENU_CONTROLES","GAME_OVER","VICTORIA","PAUSA",
+                                  "MENU_SELECCION_GRUPO","MENU_MEJORAS"]:
             return
 
         if self.es_turno_ia() and ai_controller and self.timer_transicion == 0:
@@ -614,4 +818,16 @@ class GameState:
             "battle_preview":  self.battle_preview,
             "combat_log":      self._combat_log[-6:],
             "battle_dialogue": self.dialogue.get_render_payload(),
+
+            "score_summary":   self.score.get_summary(),
+            "top_scores":      load_scores(),
+            "has_save":        has_save(),
+
+            # Roguelike
+            "rogue_heroes":    self.hero_pool,
+            "rogue_selected":  list(self._selected_heroes),
+            "rogue_cursor":    self._hero_cursor,
+            "relic_choices":   list(self.relic_choices),
+            "relic_cursor":    self._relic_cursor,
+            "rogue_relics":    list(self.rogue.acquired_relics),
         }

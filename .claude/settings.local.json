@@ -6,7 +6,13 @@
       "Bash(do echo:*)",
       "Read(//c/Users/Usuario/Downloads/cloude/projects test/EterniaSrpg/**)",
       "Bash(done)",
-      "Bash(find 'c:/Users/Usuario/Downloads/cloude/projects test/EterniaSrpg/data/maps/' -name *.json -type f)"
+      "Bash(find 'c:/Users/Usuario/Downloads/cloude/projects test/EterniaSrpg/data/maps/' -name *.json -type f)",
+      "Bash(ls -la \"c:\\\\Users\\\\Usuario\\\\Downloads\\\\cloude\\\\projects test\\\\EterniaSrpg\\\\data\\\\maps\"\" 2>/dev/null || echo \"Maps directory does not exist or is empty \")",
+      "Bash(BASE=\"c:/Users/Usuario/Downloads/cloude/projects test/EterniaSrpg/assets/sprites/units/allies/Champions\")",
+      "Bash(for hero:*)",
+      "Bash(do)",
+      "Bash(mkdir -p \"$BASE/$hero/batlle&Ui\")",
+      "Bash(mkdir -p \"$BASE/$hero/map\")"
     ]
   }
 }

@@ -12,6 +12,7 @@ from loaders.sprite_loader import (
     get_unit_map_frames, get_ui_sprite,
 )
 from ui.battle_preview import draw_battle_preview
+from systems.rogue_system import MIN_HEROES, MAX_HEROES
 
 
 # =================================================
@@ -94,7 +95,7 @@ class UIRenderer:
     # -------------------------
     # Pantallas
     # -------------------------
-    def draw_main_menu(self, surf):
+    def draw_main_menu(self, surf, state=None):
         # Fondo con degradado vertical oscuro
         for y in range(C.ALTO_PANTALLA):
             t = y / C.ALTO_PANTALLA
@@ -118,15 +119,19 @@ class UIRenderer:
         subtitle = self.font_std.render("— Victoria y Conquista —", True, C.BORDE_UI)
         surf.blit(subtitle, subtitle.get_rect(center=(cx, 165)))
 
-        # Panel de opciones
-        box_x, box_y, box_w, box_h = cx - 160, 210, 320, 190
+        # Panel de opciones — height varía si hay save
+        has_sv = state.get("has_save", False) if state else False
+        box_x, box_y, box_w = cx - 160, 210, 320
+        box_h = 240 if has_sv else 190
         self.draw_box(surf, box_x, box_y, box_w, box_h, alpha=210)
 
         opciones = [
-            ("[1]  Jugar PvP — Local",    C.BLANCO),
-            ("[2]  Jugar PvE — vs IA",    C.BLANCO),
+            ("[1]  Nueva PvP — Local",    C.BLANCO),
+            ("[2]  Nueva PvE — vs IA",    C.BLANCO),
             ("[3]  Controles",            C.GRIS_INACTIVO),
         ]
+        if has_sv:
+            opciones.insert(0, ("[4]  Continuar run guardada", C.AMARILLO_AWK))
         for i, (op, col) in enumerate(opciones):
             lbl = self.font_std.render(op, True, col)
             surf.blit(lbl, lbl.get_rect(center=(cx, 248 + i * 46)))
@@ -137,6 +142,23 @@ class UIRenderer:
         # Versión / hint
         hint = self.font_mini.render("Mapas y unidades configurables en  data/", True, C.GRIS_INACTIVO)
         surf.blit(hint, hint.get_rect(center=(cx, C.ALTO_PANTALLA - 28)))
+
+    def draw_top_scores(self, surf, top_scores: list):
+        """Panel de mejores puntajes superpuesto al menú."""
+        if not top_scores:
+            return
+        bx, by, bw = 490, 210, 300
+        bh = 28 + len(top_scores) * 24
+        self.draw_box(surf, bx, by, bw, bh, alpha=210)
+        surf.blit(self.font_mini.render("— MEJORES PUNTAJES —", True, C.AMARILLO_AWK),
+                  (bx + 10, by + 6))
+        for i, entry in enumerate(top_scores):
+            total = entry.get("total", 0)
+            maps  = entry.get("maps", 0)
+            tier  = entry.get("tier", "?")
+            line  = f"#{i+1}  {total:>7}  ×{maps}  [{tier[:3].upper()}]"
+            col   = C.AMARILLO_AWK if i == 0 else C.BLANCO
+            surf.blit(self.font_mini.render(line, True, col), (bx + 10, by + 28 + i * 24))
 
     def draw_controls_menu(self, surf):
         surf.fill(C.NEGRO)
@@ -189,7 +211,7 @@ class UIRenderer:
         # Separador
         pygame.draw.line(surf, color, (cx - 140, cy - 35), (cx + 140, cy - 35), 2)
 
-        # Info de mapa (si disponible)
+        # Info de mapa y puntuación
         if state:
             map_num  = state.get("map_number", 0)
             tier     = state.get("difficulty_tier", "")
@@ -199,14 +221,28 @@ class UIRenderer:
             info_s   = self.font_std.render(info_txt, True, (200, 200, 200))
             surf.blit(info_s, info_s.get_rect(center=(cx, cy - 10)))
 
+            # Panel de puntuación
+            sc = state.get("score_summary", {})
+            if sc:
+                self.draw_box(surf, cx - 160, cy + 5, 320, 90, alpha=200)
+                score_lines = [
+                    (f"PUNTUACION: {sc.get('total', 0)}", C.AMARILLO_AWK),
+                    (f"Kills: {sc.get('kills', 0)}   Mapas: {sc.get('maps', 0)}", C.BLANCO),
+                ]
+                for bd in sc.get("breakdown", [])[-1:]:
+                    score_lines.append((bd, C.VERDE_HP))
+                for i, (line, col) in enumerate(score_lines):
+                    s = self.font_mini.render(line, True, col)
+                    surf.blit(s, s.get_rect(center=(cx, cy + 20 + i * 22)))
+
         # Botones
         if victory:
             btn1 = self.font_std.render("[R]  Siguiente Mapa", True, C.AMARILLO_AWK)
         else:
             btn1 = self.font_std.render("[R]  Reintentar",     True, C.BLANCO)
         btn2 = self.font_std.render("[ESC]  Menú Principal",  True, C.GRIS_INACTIVO)
-        surf.blit(btn1, btn1.get_rect(center=(cx, cy + 25)))
-        surf.blit(btn2, btn2.get_rect(center=(cx, cy + 58)))
+        surf.blit(btn1, btn1.get_rect(center=(cx, cy + 105)))
+        surf.blit(btn2, btn2.get_rect(center=(cx, cy + 135)))
 
     def draw_pause_menu(self, surf):
         overlay = pygame.Surface((C.ANCHO_PANTALLA, C.ALTO_PANTALLA), pygame.SRCALPHA)
@@ -595,16 +631,177 @@ class UIRenderer:
         surf.blit(lvl, (px + C.TAMANO_TILE - lvl.get_width() - 1, py + 1))
 
     # -------------------------
+    # Roguelike: selección de héroes
+    # -------------------------
+    def draw_hero_selection(self, surf, state: dict):
+        cx = C.ANCHO_PANTALLA // 2
+        for y in range(C.ALTO_PANTALLA):
+            t = y / C.ALTO_PANTALLA
+            pygame.draw.line(surf, (int(10 + 20 * t), int(5 + 10 * t), int(30 + 30 * t)),
+                             (0, y), (C.ANCHO_PANTALLA, y))
+
+        title = self.font_title.render("ELIGE TU GRUPO", True, C.AMARILLO_AWK)
+        surf.blit(title, title.get_rect(center=(cx, 55)))
+
+        heroes   = state.get("rogue_heroes", [])
+        selected = state.get("rogue_selected", [])
+        cursor   = state.get("rogue_cursor", 0)
+
+        card_w, card_h = 140, 170
+        total_w = len(heroes) * (card_w + 16) - 16
+        start_x = cx - total_w // 2
+
+        for i, hero in enumerate(heroes):
+            hx = start_x + i * (card_w + 16)
+            hy = 100
+            is_sel    = hero in selected
+            is_cursor = (i == cursor)
+
+            border_col = C.AMARILLO_AWK if is_sel else (C.BORDE_UI if is_cursor else C.GRIS_INACTIVO)
+            alpha      = 230 if is_sel or is_cursor else 160
+            self.draw_box(surf, hx, hy, card_w, card_h, alpha=alpha)
+            if is_sel or is_cursor:
+                pygame.draw.rect(surf, border_col, (hx, hy, card_w, card_h), 3)
+
+            # Indicador de color del héroe
+            pygame.draw.circle(surf, hero.color, (hx + card_w // 2, hy + 36), 22)
+            letter = self.font_ui_title.render(hero.nombre[0], True, C.BLANCO)
+            surf.blit(letter, letter.get_rect(center=(hx + card_w // 2, hy + 36)))
+
+            # Nombre y clase
+            surf.blit(self.font_ui_title.render(hero.nombre, True, C.BLANCO),
+                      self.font_ui_title.render(hero.nombre, True, C.BLANCO).get_rect(center=(hx + card_w // 2, hy + 72)))
+            surf.blit(self.font_mini.render(hero.clase, True, C.GRIS_INACTIVO),
+                      self.font_mini.render(hero.clase, True, C.GRIS_INACTIVO).get_rect(center=(hx + card_w // 2, hy + 90)))
+
+            # Descripción (wrap manual)
+            desc_words = hero.descripcion.split()
+            line, lines = "", []
+            for w in desc_words:
+                test = (line + " " + w).strip()
+                if self.font_mini.size(test)[0] < card_w - 12:
+                    line = test
+                else:
+                    lines.append(line); line = w
+            if line: lines.append(line)
+            for j, ln in enumerate(lines[:3]):
+                s = self.font_mini.render(ln, True, (190, 190, 190))
+                surf.blit(s, s.get_rect(center=(hx + card_w // 2, hy + 112 + j * 16)))
+
+            if is_sel:
+                check = self.font_ui_title.render("✓", True, C.VERDE_HP)
+                surf.blit(check, (hx + card_w - 22, hy + 4))
+
+        # Instrucciones
+        n = len(selected)
+        inst_col = C.AMARILLO_AWK if n >= MIN_HEROES else C.GRIS_INACTIVO
+        self.draw_box(surf, cx - 220, 290, 440, 70, alpha=180)
+        surf.blit(self.font_std.render(
+            f"ESPACIO — Seleccionar/Deseleccionar  ({n}/{MAX_HEROES} elegidos)", True, C.BLANCO),
+            self.font_std.render(
+            f"ESPACIO — Seleccionar/Deseleccionar  ({n}/{MAX_HEROES} elegidos)", True, C.BLANCO
+            ).get_rect(center=(cx, 308)))
+        surf.blit(self.font_std.render(
+            "[F] Comenzar aventura" if n >= MIN_HEROES else f"Elige al menos {MIN_HEROES} héroes",
+            True, inst_col),
+            self.font_std.render(
+            "[F] Comenzar aventura" if n >= MIN_HEROES else f"Elige al menos {MIN_HEROES} héroes",
+            True, inst_col).get_rect(center=(cx, 336)))
+
+        # Reliquias activas (si viene de un run anterior — segunda partida)
+        relics = state.get("rogue_relics", [])
+        if relics:
+            self.draw_box(surf, cx - 200, 375, 400, 28 + len(relics) * 20, alpha=160)
+            surf.blit(self.font_mini.render("Reliquias activas:", True, C.AMARILLO_AWK), (cx - 190, 380))
+            for i, r in enumerate(relics):
+                surf.blit(self.font_mini.render(f"  • {r.nombre}", True, C.BLANCO), (cx - 190, 398 + i * 20))
+
+    # -------------------------
+    # Roguelike: selección de reliquias
+    # -------------------------
+    def draw_relic_selection(self, surf, state: dict):
+        cx = C.ANCHO_PANTALLA // 2
+        for y in range(C.ALTO_PANTALLA):
+            t = y / C.ALTO_PANTALLA
+            pygame.draw.line(surf, (int(20 + 10 * t), int(10 + 5 * t), int(40 + 20 * t)),
+                             (0, y), (C.ANCHO_PANTALLA, y))
+
+        title = self.font_title.render("ELIGE UNA MEJORA", True, C.AMARILLO_AWK)
+        surf.blit(title, title.get_rect(center=(cx, 55)))
+
+        choices = state.get("relic_choices", [])
+        cursor  = state.get("relic_cursor", 0)
+
+        card_w, card_h = 200, 200
+        spacing = 30
+        total_w = len(choices) * (card_w + spacing) - spacing
+        start_x = cx - total_w // 2
+
+        for i, relic in enumerate(choices):
+            rx = start_x + i * (card_w + spacing)
+            ry = 110
+            is_cursor = (i == cursor)
+
+            self.draw_box(surf, rx, ry, card_w, card_h, alpha=210)
+            border = C.AMARILLO_AWK if is_cursor else C.BORDE_UI
+            pygame.draw.rect(surf, border, (rx, ry, card_w, card_h), 3 if is_cursor else 1)
+
+            pygame.draw.circle(surf, relic.color, (rx + card_w // 2, ry + 40), 28)
+            ltr = self.font_title.render(relic.nombre[0], True, C.BLANCO)
+            surf.blit(ltr, ltr.get_rect(center=(rx + card_w // 2, ry + 40)))
+
+            surf.blit(self.font_ui_title.render(relic.nombre, True, C.BLANCO),
+                      self.font_ui_title.render(relic.nombre, True, C.BLANCO).get_rect(center=(rx + card_w // 2, ry + 82)))
+
+            desc_words = relic.descripcion.split()
+            line, lines = "", []
+            for w in desc_words:
+                test = (line + " " + w).strip()
+                if self.font_mini.size(test)[0] < card_w - 16:
+                    line = test
+                else:
+                    lines.append(line); line = w
+            if line: lines.append(line)
+            for j, ln in enumerate(lines[:4]):
+                s = self.font_mini.render(ln, True, (200, 200, 200))
+                surf.blit(s, s.get_rect(center=(rx + card_w // 2, ry + 108 + j * 18)))
+
+            if is_cursor:
+                arrow = self.font_ui_title.render("▼", True, C.AMARILLO_AWK)
+                surf.blit(arrow, arrow.get_rect(center=(rx + card_w // 2, ry + card_h + 10)))
+
+        inst = self.font_std.render("← → para mover    ENTER para elegir", True, C.GRIS_INACTIVO)
+        surf.blit(inst, inst.get_rect(center=(cx, C.ALTO_PANTALLA - 35)))
+
+        # Reliquias ya adquiridas
+        acquired = state.get("rogue_relics", [])
+        if acquired:
+            lx = 20
+            self.draw_box(surf, lx, 110, 170, 24 + len(acquired) * 20, alpha=180)
+            surf.blit(self.font_mini.render("Reliquias:", True, C.AMARILLO_AWK), (lx + 6, 116))
+            for i, r in enumerate(acquired):
+                surf.blit(self.font_mini.render(f"• {r.nombre}", True, C.BLANCO), (lx + 6, 134 + i * 20))
+
+    # -------------------------
     # Render principal
     # -------------------------
     def render(self, surf, state: dict):
         estado = state.get("estado_juego", "MENU_PRINCIPAL")
 
         if estado == "MENU_PRINCIPAL":
-            self.draw_main_menu(surf)
+            self.draw_main_menu(surf, state)
+            top = state.get("top_scores", [])
+            if top:
+                self.draw_top_scores(surf, top)
             return
         if estado == "MENU_CONTROLES":
             self.draw_controls_menu(surf)
+            return
+        if estado == "MENU_SELECCION_GRUPO":
+            self.draw_hero_selection(surf, state)
+            return
+        if estado == "MENU_MEJORAS":
+            self.draw_relic_selection(surf, state)
             return
         if estado == "GAME_OVER":
             self.draw_end_screen(surf, victory=False, state=state)

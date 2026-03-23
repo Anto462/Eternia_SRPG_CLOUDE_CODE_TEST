@@ -7,12 +7,14 @@
     "aliado":  [1, 1],
     "enemigo": [23, 16]
   },
-  "spawns": [
-    {"unit_id": "HERO_ALLY",    "bando": "aliado",  "pos": [3, 3]},
-    {"unit_id": "CLERIC_ALLY",  "bando": "aliado",  "pos": [4, 3]},
-    {"unit_id": "BANDIT_ENEMY", "bando": "enemigo", "pos": [20, 12]},
-    {"unit_id": "ORC_ENEMY",    "bando": "enemigo", "pos": [21, 12]},
-    {"unit_id": "MAGE_ENEMY",   "bando": "enemigo", "pos": [18, 10]}
+  "ally_spawns": [
+    {"unit_id": "HERO_ALLY",   "bando": "aliado", "pos": [3, 3]},
+    {"unit_id": "CLERIC_ALLY", "bando": "aliado", "pos": [4, 3]}
+  ],
+  "enemy_spawns": [
+    {"pos": [20, 12]},
+    {"pos": [21, 12]},
+    {"pos": [18, 10]}
   ],
   "items_spawn": [
     {"pos": [12, 4],  "item_id": "POTION_G"},
