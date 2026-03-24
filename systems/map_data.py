@@ -27,10 +27,22 @@ Coord = Tuple[int, int]
 # game_state llama a pick_enemies_for_difficulty(tier, positions).
 
 ENEMY_POOLS: Dict[str, List[str]] = {
-    "easy":   ["BANDIT_ENEMY", "GOBLIN_SPEAR", "GOBLIN_CLUB",    "SLIME"],
-    "medium": ["ORC_ENEMY",    "MAGE_ENEMY",   "PIRATE_CAPTAIN", "GOBLIN_ARCHER", "SKELETON_SOLDIER"],
-    "hard":   ["MINOTAUR",     "ORC_SHAMAN",   "PIRATE_GUNNER",  "NECROMANCER",   "DEMON_RED"],
-    "boss":   ["DEMON_RED",    "MAMMOTH",       "NECROMANCER",    "MINOTAUR"],
+    "easy": [
+        "BANDIT_ENEMY", "GOBLIN_SPEAR", "GOBLIN_CLUB", "FARMER_GOBLIN", "SLIME",
+    ],
+    "medium": [
+        "ORC_ENEMY", "MAGE_ENEMY", "PIRATE_CAPTAIN", "GOBLIN_ARCHER",
+        "SKELETON_SOLDIER", "KAMIKAZE_GOBLIN", "YETI",
+    ],
+    "hard": [
+        "MINOTAUR", "ORC_SHAMAN", "PIRATE_GUNNER", "NECROMANCER", "DEMON_RED",
+        "ARMOURED_DEMON", "PURPLE_DEMON", "WENDIGO",
+        "BLUE_DRAGON", "YELLOW_DRAGON", "GIANT_CRAB",
+    ],
+    "boss": [
+        "DEMON_RED", "MAMMOTH", "NECROMANCER", "MINOTAUR",
+        "BLACK_DRAGON", "WHITE_DRAGON",
+    ],
 }
 
 def get_difficulty_tier(map_number: int) -> str:
@@ -122,9 +134,10 @@ def _flat() -> List[List[int]]:
 
 
 def _gen_forest_pass() -> List[List[int]]:
-    """Dos paredes de bosque verticales con brechas — chokepoint central."""
+    """Dos paredes de bosque con brechas estratégicas.
+    Árboles muertos (9) en bordes y rocas (5) como cobertura secundaria."""
     g = _flat()
-    # Pared izquierda (cols 7-9) y derecha (cols 15-17)
+    # Paredes de bosque (cols 7-9 y 15-17)
     for y in range(GRILLA_ALTO):
         for x in [7, 8, 9, 15, 16, 17]:
             g[y][x] = 1
@@ -133,124 +146,199 @@ def _gen_forest_pass() -> List[List[int]]:
         g[y][8] = 0; g[y][9] = 0
     for y in range(11, 13):
         g[y][7] = 0; g[y][8] = 0
-    # Brechas en pared derecha (solo fila 8-9 — más difícil cruzar)
+    # Brecha en pared derecha (filas 8-9 — más difícil cruzar)
     for y in range(8, 10):
         g[y][15] = 0; g[y][16] = 0
-    # Rocas que cortan pasos adicionales
+    # Muros de roca bloqueando cruces del corredor central
     for x in range(10, 15):
         g[2][x] = 2
         g[15][x] = 2
-    g[2][11] = 0; g[2][12] = 0   # paso superior
+    g[2][11] = 0; g[2][12] = 0    # paso superior
     g[15][12] = 0; g[15][13] = 0  # paso inferior
-    # Bosque decorativo en lados
-    for y in [1, 3, 7, 10, 14, 16]:
-        g[y][4] = 1; g[y][20] = 1
+    # Bosque decorativo lateral (cobertura adicional)
+    for row in [1, 3, 7, 10, 14, 16]:
+        g[row][4] = 1; g[row][20] = 1
+    # Árboles muertos (9) en los márgenes del mapa — atmósfera de bosque oscuro
+    for row in [0, 2, 5, 9, 13, 17]:
+        if row < GRILLA_ALTO:
+            g[row][1] = 9; g[row][23] = 9
+    # Rocas pequeñas (5) en el corredor como obstáculos tácticos secundarios
+    for (row, col) in [(6, 11), (6, 13), (12, 11), (12, 13)]:
+        g[row][col] = 5
     return g
 
 
 def _gen_river_crossing() -> List[List[int]]:
-    """Río vertical en el centro con 3 cruces estrechos."""
+    """Río vertical de 3 tiles de ancho (cols 11-13) con agua profunda en el centro.
+    Cols 10 y 14 son hierba — transición libre desde las orillas.
+    Tres puentes abren las cols de agua en filas 3, 9 y 14.
+    Bosque en orillas (cols 7-8 y 15-16) con rocas como cobertura adicional."""
     g = _flat()
-    # Río: cols 10-14, agua en su mayoría
+    # Río: solo cols 11-13 son agua — las orillas (cols 10 y 14) quedan libres
     for y in range(GRILLA_ALTO):
-        for x in range(10, 15):
-            g[y][x] = 3
-    # Tres cruces de un tile de ancho: filas 3, 9, 14
-    for bridge_y in [3, 9, 14]:
-        for x in range(10, 15):
-            g[bridge_y][x] = 0
-        # Solo uno de ancho real (col 12)
-        for x in [10, 11, 13, 14]:
-            g[bridge_y][x] = 3
-    # Ampliar el cruce central a 2 tiles (col 11-12)
-    g[9][11] = 0; g[9][12] = 0
-    # Bosque en orillas
+        g[y][11] = 3   # agua normal izquierda
+        g[y][12] = 6   # agua profunda central (impassable diferenciada visualmente)
+        g[y][13] = 3   # agua normal derecha
+    # Tres puentes: abrir las 3 cols de agua completamente
+    for bridge_y in [3, 8, 14]:
+        g[bridge_y][11] = 0
+        g[bridge_y][12] = 0
+        g[bridge_y][13] = 0
+    # Puente central más ancho (también col 10 y 14 se limpian de bosque)
+    # (ya son hierba, no hace falta hacer nada extra)
+    # Bosque en orillas como cobertura táctica
     for y in range(1, GRILLA_ALTO - 1):
-        g[y][7] = 1; g[y][8] = 1
+        g[y][7]  = 1; g[y][8]  = 1
         g[y][16] = 1; g[y][17] = 1
-    # Quitar bosque en filas de cruce para no bloquear
-    for y in [3, 9, 14]:
+    # Abrir bosque en filas de cruce para que no sea un callejón sin salida
+    for y in [3, 8, 14]:
         g[y][7] = 0; g[y][8] = 0
         g[y][16] = 0; g[y][17] = 0
+    # Rocas (5) en las orillas del río — cobertura táctica junto al agua
+    for (row, col) in [(1, 9), (5, 10), (11, 9), (16, 10),
+                       (2, 14), (7, 14), (12, 14), (15, 14)]:
+        if 0 <= row < GRILLA_ALTO:
+            g[row][col] = 5
     return g
 
 
 def _gen_mountain_keep() -> List[List[int]]:
-    """Cordillera horizontal con dos pasos — aliados en la parte baja."""
+    """Cordillera con zona nevada al norte y fortaleza enemiga.
+    Nieve (7) y árboles invernales (8) en la cima; hierba seca (4) dentro de la fortaleza;
+    rocas (5) naturales en los bordes de la cordillera."""
     g = _flat()
-    # Cordillera: filas 7-10
+    # Zona nevada en las 3 filas superiores
+    for y in range(3):
+        for x in range(GRILLA_ANCHO):
+            g[y][x] = 7   # suelo nevado
+    # Árboles invernales (8) dispersos en zona nevada
+    for (row, col) in [(0, 4), (0, 5), (1, 8), (1, 9),
+                       (0, 14), (0, 15), (1, 19), (1, 20)]:
+        g[row][col] = 8
+    # Cordillera: filas 7-10 (muros impassable)
     for y in range(7, 11):
         for x in range(GRILLA_ANCHO):
             g[y][x] = 2
-    # Paso oeste (cols 4-5) y paso este (cols 18-19)
+    # Rocas (5) en los bordes de la cordillera — aspecto más orgánico
+    for (row, col) in [(7, 0), (7, 1), (10, 23), (10, 24),
+                       (8, 2), (9, 22), (7, 13), (10, 12)]:
+        if 0 <= col < GRILLA_ANCHO:
+            g[row][col] = 5
+    # Pasos: oeste (cols 4-5) y este (cols 18-19)
     for y in range(7, 11):
         g[y][4] = 0; g[y][5] = 0
         g[y][18] = 0; g[y][19] = 0
-    # Muro de fortaleza enemiga en parte superior (filas 1-5, cols 16-23)
+    # Muro de fortaleza enemiga (filas 1-5, cols 16-23)
     for y in range(1, 6):
         g[y][16] = 2; g[y][23] = 2
     for x in range(16, 24):
         g[1][x] = 2; g[5][x] = 2
+    # Interior de fortaleza en hierba seca (4) — patio interior desgastado
+    for y in range(2, 5):
+        for x in range(17, 23):
+            g[y][x] = 4
     # Entrada de la fortaleza
     g[5][19] = 0; g[5][20] = 0
-    # Bosque en la parte inferior (zona aliada)
-    for pos in [(6,13), (6,14), (10,13), (10,14), (3,11), (3,12)]:
-        g[pos[0]][pos[1]] = 1
-    # Pequeños bosques en parte superior
-    for pos in [(2,8), (2,9), (3,8), (3,9)]:
-        g[pos[0]][pos[1]] = 1
+    # Bosque en la zona aliada inferior (filas 11-16)
+    for (row, col) in [(11, 2), (11, 3), (12, 5), (12, 6),
+                       (13, 13), (13, 14), (14, 3), (15, 11), (16, 12)]:
+        if 0 <= row < GRILLA_ALTO:
+            g[row][col] = 1
+    # Bosque en zona enemiga al aire libre (árboles invernales en la nieve)
+    for (row, col) in [(2, 8), (2, 9)]:
+        g[row][col] = 8   # sobre suelo nevado → árboles invernales
+    for (row, col) in [(3, 8), (3, 9)]:
+        g[row][col] = 1   # ya es hierba normal → bosque estándar
     return g
 
 
 def _gen_fortress_siege() -> List[List[int]]:
-    """Fortaleza enemiga en la esquina superior-derecha. Aliados asedian desde abajo."""
+    """Fortaleza enemiga en esquina superior-derecha. Aliados asedian desde el sur.
+    Patio interior en hierba seca (4); árboles muertos (9) cerca del campo de batalla;
+    rocas (5) como cobertura extra en la aproximación."""
     g = _flat()
-    # Fortaleza: muros exteriores (filas 0-7, cols 15-24)
+    # Muros exteriores de la fortaleza (filas 0-7, cols 15-24)
     for x in range(15, 25):
-        g[0][x] = 2; g[7][x] = 2
+        if x < GRILLA_ANCHO:
+            g[0][x] = 2; g[7][x] = 2
     for y in range(0, 8):
-        g[y][15] = 2; g[y][24] = 2
+        g[y][15] = 2
+        if 24 < GRILLA_ANCHO:
+            g[y][24] = 2
     # Entrada de la fortaleza (fila 7, cols 19-20)
     g[7][19] = 0; g[7][20] = 0
-    # Paredes interiores de la fortaleza
+    # Paredes interiores
     for x in range(17, 23):
         g[3][x] = 2
     g[3][19] = 0; g[3][20] = 0
-    # Bosque de aproximación para cobertura
-    for pos in [(9,6),(9,7),(10,6),(11,5),(11,6),
-                (9,11),(10,11),(10,12),(11,12),
-                (8,16),(8,17)]:
-        g[pos[0]][pos[1]] = 1
-    # Pared lateral izquierda parcial
+    # Patio interior en hierba seca (4) — desgastado por el uso militar
+    for y in range(1, 3):
+        for x in range(16, 24):
+            if x < GRILLA_ANCHO:
+                g[y][x] = 4
+    for y in range(4, 7):
+        for x in range(16, 24):
+            if x < GRILLA_ANCHO:
+                g[y][x] = 4
+    # Bosque de aproximación — mezcla de árboles vivos (1) y muertos (9)
+    for (row, col) in [(9, 6), (9, 7), (10, 6), (11, 5), (11, 6),
+                       (9, 11), (10, 11), (10, 12), (11, 12)]:
+        g[row][col] = 1
+    # Árboles muertos (9) — quemados por la batalla, dan atmósfera de asedio
+    for (row, col) in [(8, 5), (10, 8), (12, 10), (9, 13), (11, 14)]:
+        if 0 <= row < GRILLA_ALTO and 0 <= col < GRILLA_ANCHO:
+            g[row][col] = 9
+    # Pared lateral izquierda con brecha para flanqueo
     for y in range(5, 12):
         g[y][10] = 2
-    g[8][10] = 0; g[9][10] = 0  # brecha en la pared
+    g[8][10] = 0; g[9][10] = 0
+    # Rocas (5) como cobertura táctica en la aproximación central
+    for (row, col) in [(13, 7), (14, 8), (13, 18), (14, 19)]:
+        if 0 <= row < GRILLA_ALTO and 0 <= col < GRILLA_ANCHO:
+            g[row][col] = 5
     return g
 
 
 def _gen_tundra_wastes() -> List[List[int]]:
-    """Campo abierto con formaciones rocosas dispersas — táctica de maniobra."""
-    g = _flat()
-    # Bloques de roca 2×2 dispersos
+    """Yermo helado con suelo nevado base (7), árboles invernales (8),
+    formaciones de rocas (5) y ruinas aisladas (2). Táctica de maniobra amplia."""
+    # Base: suelo nevado (7) — todo el mapa cubierto de nieve
+    g = [[7] * GRILLA_ANCHO for _ in range(GRILLA_ALTO)]
+    # Formaciones rocosas dispersas (5) en lugar de muros — más orgánico
+    # (col, row) — ry=row, rx=col
     rock_anchors = [
-        (3,5),(3,12),(4,19),(6,8),(6,16),
-        (8,4),(8,13),(9,20),(10,7),(11,11),
-        (12,3),(12,17),(13,9),(13,21),(14,5),(14,14)
+        (5, 3), (12, 3), (19, 4), (8, 6), (16, 6),
+        (4, 8), (13, 8), (20, 9), (7, 10), (11, 11),
+        (3, 12), (17, 12), (9, 13), (21, 13),
     ]
-    for rx, ry in rock_anchors:
-        if 0 < rx < GRILLA_ANCHO-1 and 0 < ry < GRILLA_ALTO-1:
-            g[ry][rx] = 2
-            g[ry][rx+1] = 2
-            g[ry+1][rx] = 2
-    # Parches de bosque en lugar de algunos bloques
-    forest_spots = [(2,7),(2,8),(5,14),(5,15),(7,18),(7,19),
-                    (11,5),(11,6),(15,10),(15,11),(16,16),(16,17)]
-    for fx, fy in forest_spots:
-        if 0 <= fx < GRILLA_ANCHO and 0 <= fy < GRILLA_ALTO:
-            g[fy][fx] = 1
-    # Charcos de agua pequeños
-    for wx, wy in [(10,9),(11,9),(10,10)]:
-        g[wy][wx] = 3
+    for col, row in rock_anchors:
+        if 0 < col < GRILLA_ANCHO - 1 and 0 < row < GRILLA_ALTO - 1:
+            g[row][col]     = 5
+            g[row][col + 1] = 5
+            g[row + 1][col] = 5
+    # Árboles invernales (8) en grupos — esquinas y centro
+    winter_tree_spots = [
+        # Esquinas del mapa
+        (1, 1), (2, 1), (1, 2), (2, 2),
+        (22, 1), (23, 1), (22, 2), (23, 2),
+        (1, 15), (2, 15), (1, 16), (2, 16),
+        (22, 15), (23, 15), (22, 16), (23, 16),
+        # Grupos en zonas centrales
+        (6, 7), (7, 7), (6, 8),
+        (17, 8), (18, 8), (17, 9),
+        (11, 10), (12, 10), (11, 11),
+    ]
+    for col, row in winter_tree_spots:
+        if 0 <= col < GRILLA_ANCHO and 0 <= row < GRILLA_ALTO:
+            g[row][col] = 8
+    # Charcos helados (3) — pequeños estanques congelados
+    for col, row in [(10, 4), (11, 4), (10, 5), (13, 13), (14, 13)]:
+        if 0 <= col < GRILLA_ANCHO and 0 <= row < GRILLA_ALTO:
+            g[row][col] = 3
+    # Ruinas de muros (2) — restos de una fortaleza destruida
+    for col, row in [(6, 3), (7, 3), (16, 14), (17, 14)]:
+        if 0 <= col < GRILLA_ANCHO and 0 <= row < GRILLA_ALTO:
+            g[row][col] = 2
     return g
 
 
@@ -283,17 +371,17 @@ _GRID_GREENFIELD = [
     [0,0,0,0,0,0,0,0,0,3,3,2,2,3,0,0,0,0,0,0,0,0,0,0,0],
     [0,0,0,1,0,0,0,0,0,0,3,2,2,0,0,0,0,0,0,0,0,0,0,0,0],
     [0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,5,5,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0],
+    [0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,1,1,0,0,0,0,5,5,0,0,0,0,0,0,0,0,0,0,0,0],
     [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,5,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0],
+    [0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0],
+    [0,0,0,0,1,1,0,0,0,0,0,3,3,3,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,3,3,3,3,3,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,3,3,3,0,0,0,0,0,0,0,0,0,0,0],
 ]
 
 _MAP_GREENFIELD = MapDef(
@@ -302,23 +390,44 @@ _MAP_GREENFIELD = MapDef(
     thrones={"aliado": (2, 2), "enemigo": (22, 2)},
     spawns=[
         SpawnDef("HERO_ALLY",   "aliado",  (5, 5)),
-        SpawnDef("CLERIC_ALLY", "aliado",  (6, 6)),
+        SpawnDef("CLERIC_ALLY", "aliado",  (4, 7)),
     ],
-    enemy_positions=[(10, 5), (12, 8), (9, 9)],
-    items_spawn={(8, 8): "LANCE_SILVER", (6, 8): "POTION_G"},
+    enemy_positions=[(17, 5), (19, 9), (16, 12)],
+    items_spawn={(7, 7): "LANCE_SILVER", (6, 8): "POTION_G", (13, 11): "ANTIDOTE"},
     rules={"neutral_monsters": False, "turn_limit": None},
 )
 
+_GRID_ARENA = [
+    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+    [2,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,2],
+    [2,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,2],
+    [2,4,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0,0,0,4,2],
+    [2,4,0,0,5,5,0,0,0,0,0,0,0,0,0,0,0,0,5,5,0,0,0,4,2],
+    [2,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,2],
+    [2,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,2],
+    [2,4,0,0,0,0,0,0,0,5,0,0,0,0,5,0,0,0,0,0,0,0,0,4,2],
+    [2,4,0,0,0,0,0,0,0,0,5,0,0,5,0,0,0,0,0,0,0,0,0,4,2],
+    [2,4,0,0,0,0,0,0,0,0,0,5,5,0,0,0,0,0,0,0,0,0,0,4,2],
+    [2,4,0,0,0,0,0,0,0,0,5,0,0,5,0,0,0,0,0,0,0,0,0,4,2],
+    [2,4,0,0,0,0,0,0,0,5,0,0,0,0,5,0,0,0,0,0,0,0,0,4,2],
+    [2,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,2],
+    [2,4,0,0,5,5,0,0,0,0,0,0,0,0,0,0,0,0,5,5,0,0,0,4,2],
+    [2,4,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0,0,0,4,2],
+    [2,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,2],
+    [2,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,2],
+    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+]
+
 _MAP_ARENA = MapDef(
     name="Arena",
-    grid=_gen_flat_with_wall(8, 6, 18),
+    grid=_GRID_ARENA,
     thrones={"aliado": (1, 1), "enemigo": (23, 16)},
     spawns=[
         SpawnDef("HERO_ALLY",   "aliado",  (3, 3)),
-        SpawnDef("CLERIC_ALLY", "aliado",  (4, 3)),
+        SpawnDef("CLERIC_ALLY", "aliado",  (3, 5)),
     ],
-    enemy_positions=[(20, 12), (21, 12), (18, 10)],
-    items_spawn={(12, 4): "POTION_G", (12, 12): "LANCE_SILVER"},
+    enemy_positions=[(21, 12), (20, 14), (21, 9)],
+    items_spawn={(12, 6): "POTION_G", (12, 12): "LANCE_SILVER"},
     rules={"neutral_monsters": False, "turn_limit": 30},
 )
 

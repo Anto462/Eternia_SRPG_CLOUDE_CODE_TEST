@@ -219,12 +219,9 @@ class GameState:
         elif key in [pygame.K_RETURN, pygame.K_SPACE]:
             relic = self.relic_choices[self._relic_cursor]
             self.rogue.add_relic(relic)
-            for u in self.unidades_vivas:
-                if u.bando == "aliado":
-                    self.rogue.apply_relics_to_unit(u)
             self._log(f"Reliquia: {relic.nombre}")
             if self.audio: self.audio.play("level_up")
-            self._do_advance()
+            self._do_advance()  # _load_map aplica las reliquias a las nuevas unidades
 
     # ===================================================
     # Inicio de partida
@@ -265,12 +262,35 @@ class GameState:
             for pos, item_id in map_def.items_spawn.items()
         }
 
-        # Aliados fijos
-        self.unidades = [
-            make_unit(sp.unit_id, sp.pos[0], sp.pos[1], sp.bando,
-                      add_floating_text=self.fx.add_text)
-            for sp in map_def.spawns
-        ]
+        # Determinar aliados: PVE roguelike usa el grupo seleccionado
+        ally_positions = [sp.pos for sp in map_def.spawns if sp.bando == "aliado"]
+
+        if self.modo_juego == "PVE" and self.rogue.selected_heroes:
+            # Mapear cada héroe elegido a una posición de spawn
+            self.unidades = []
+            for i, unit_id in enumerate(self.rogue.selected_heroes):
+                if i < len(ally_positions):
+                    pos = ally_positions[i]
+                else:
+                    # Más héroes que posiciones: colocar adyacente al último
+                    base = ally_positions[-1] if ally_positions else (3, 3)
+                    pos  = (base[0] + (i - len(ally_positions) + 1), base[1])
+                self.unidades.append(
+                    make_unit(unit_id, pos[0], pos[1], "aliado",
+                              add_floating_text=self.fx.add_text)
+                )
+        else:
+            # PVP u otros modos: aliados fijos del JSON del mapa
+            self.unidades = [
+                make_unit(sp.unit_id, sp.pos[0], sp.pos[1], sp.bando,
+                          add_floating_text=self.fx.add_text)
+                for sp in map_def.spawns
+            ]
+
+        # Aplicar reliquias adquiridas a los aliados recién creados
+        for u in self.unidades:
+            if u.bando == "aliado" and self.rogue.acquired_relics:
+                self.rogue.apply_relics_to_unit(u)
 
         # Enemigos aleatorios según dificultad
         tier = get_difficulty_tier(self.map_number)

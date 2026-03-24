@@ -20,7 +20,7 @@
     "crecimientos": {"hp": 40, "str": 35, "def": 20, "spd": 50, "skl": 40, "lck": 20},
     "items": ["LANCE_IRON"], "skills": [],
     "is_hero": false, "awakening_type": null,
-    "sprite": "goblin", "portrait": "goblin_portrait",
+    "sprite": "goblin_spear", "portrait": null,
     "color_fallback": [160, 100, 40],
     "difficulty_tier": "easy"
   },
@@ -33,8 +33,21 @@
     "crecimientos": {"hp": 55, "str": 55, "def": 15, "spd": 25, "skl": 15, "lck": 5},
     "items": ["AXE_IRON"], "skills": [],
     "is_hero": false, "awakening_type": null,
-    "sprite": "bandit", "portrait": null,
+    "sprite": "goblin_club", "portrait": null,
     "color_fallback": [180, 80, 20],
+    "difficulty_tier": "easy"
+  },
+
+  "FARMER_GOBLIN": {
+    "nombre": "Goblin Granjero",
+    "clase": "Goblin",
+    "mov": 4, "hp": 14, "mp": 0,
+    "str": 4, "def": 1, "mag": 0, "spd": 5, "skl": 3, "lck": 4,
+    "crecimientos": {"hp": 35, "str": 25, "def": 10, "spd": 35, "skl": 25, "lck": 30},
+    "items": ["AXE_IRON"], "skills": [],
+    "is_hero": false, "awakening_type": null,
+    "sprite": "farmer_goblin", "portrait": null,
+    "color_fallback": [120, 130, 40],
     "difficulty_tier": "easy"
   },
 
@@ -72,8 +85,21 @@
     "crecimientos": {"hp": 40, "str": 40, "def": 15, "spd": 55, "skl": 60, "lck": 30},
     "items": ["BOW_IRON"], "skills": ["PIERCING_SHOT"],
     "is_hero": false, "awakening_type": null,
-    "sprite": "goblin", "portrait": null,
+    "sprite": "goblin_archer", "portrait": null,
     "color_fallback": [140, 100, 30],
+    "difficulty_tier": "medium"
+  },
+
+  "KAMIKAZE_GOBLIN": {
+    "nombre": "Goblin Kamikaze",
+    "clase": "Goblin",
+    "mov": 7, "hp": 16, "mp": 0,
+    "str": 12, "def": 1, "mag": 0, "spd": 12, "skl": 4, "lck": 2,
+    "crecimientos": {"hp": 35, "str": 65, "def": 5, "spd": 75, "skl": 20, "lck": 10},
+    "items": ["AXE_IRON"], "skills": [],
+    "is_hero": false, "awakening_type": null,
+    "sprite": "kamikaze_goblin", "portrait": null,
+    "color_fallback": [220, 80, 20],
     "difficulty_tier": "medium"
   },
 
@@ -111,7 +137,7 @@
     "crecimientos": {"hp": 60, "str": 55, "def": 30, "spd": 50, "skl": 50, "lck": 35},
     "items": ["SWORD_STEEL"], "skills": ["FEROCIOUS_STRIKE"],
     "is_hero": false, "awakening_type": null,
-    "sprite": "pirate", "portrait": null,
+    "sprite": "pirate_captain", "portrait": null,
     "color_fallback": [30, 100, 160],
     "difficulty_tier": "medium"
   },
@@ -137,8 +163,99 @@
     "crecimientos": {"hp": 45, "str": 50, "def": 20, "spd": 45, "skl": 65, "lck": 40},
     "items": ["BOW_IRON"], "skills": ["PIERCING_SHOT"],
     "is_hero": false, "awakening_type": null,
-    "sprite": "pirate", "portrait": null,
+    "sprite": "pirate_gunner", "portrait": null,
     "color_fallback": [20, 80, 140],
+    "difficulty_tier": "hard"
+  },
+
+  "YETI": {
+    "nombre": "Yeti",
+    "clase": "Frostborn",
+    "mov": 4, "hp": 38, "mp": 10,
+    "str": 11, "def": 6, "mag": 0, "spd": 4, "skl": 4, "lck": 2,
+    "crecimientos": {"hp": 80, "str": 60, "def": 55, "spd": 20, "skl": 20, "lck": 10},
+    "items": [], "skills": [],
+    "is_hero": false, "awakening_type": null,
+    "sprite": "yeti", "portrait": null,
+    "color_fallback": [200, 220, 240],
+    "difficulty_tier": "hard"
+  },
+
+  "ARMOURED_DEMON": {
+    "nombre": "Demonio Acorazado",
+    "clase": "Demonio",
+    "mov": 4, "hp": 48, "mp": 15,
+    "str": 13, "def": 10, "mag": 3, "spd": 5, "skl": 6, "lck": 2,
+    "crecimientos": {"hp": 85, "str": 65, "def": 70, "spd": 25, "skl": 35, "lck": 10},
+    "items": ["LANCE_IRON"], "skills": [],
+    "is_hero": false, "awakening_type": null,
+    "sprite": "armoured_demon", "portrait": null,
+    "color_fallback": [160, 10, 10],
+    "difficulty_tier": "hard"
+  },
+
+  "PURPLE_DEMON": {
+    "nombre": "Demonio Púrpura",
+    "clase": "Demonio",
+    "mov": 5, "hp": 36, "mp": 40,
+    "str": 10, "def": 5, "mag": 11, "spd": 7, "skl": 8, "lck": 3,
+    "crecimientos": {"hp": 70, "str": 55, "def": 40, "spd": 50, "skl": 60, "lck": 15},
+    "items": ["STAFF_DARK"], "skills": ["DARK_BOLT"],
+    "is_hero": false, "awakening_type": null,
+    "sprite": "purple_demon", "portrait": null,
+    "color_fallback": [140, 20, 160],
+    "difficulty_tier": "hard"
+  },
+
+  "WENDIGO": {
+    "nombre": "Wendigo",
+    "clase": "Frostborn",
+    "mov": 5, "hp": 30, "mp": 25,
+    "str": 9, "def": 4, "mag": 7, "spd": 8, "skl": 7, "lck": 3,
+    "crecimientos": {"hp": 60, "str": 50, "def": 30, "spd": 55, "skl": 50, "lck": 20},
+    "items": [], "skills": ["DARK_BOLT"],
+    "is_hero": false, "awakening_type": null,
+    "sprite": "wendigo", "portrait": null,
+    "color_fallback": [140, 180, 220],
+    "difficulty_tier": "hard"
+  },
+
+  "BLUE_DRAGON": {
+    "nombre": "Dragón Azul",
+    "clase": "Dragón",
+    "mov": 5, "hp": 55, "mp": 30,
+    "str": 14, "def": 8, "mag": 10, "spd": 6, "skl": 6, "lck": 3,
+    "crecimientos": {"hp": 90, "str": 70, "def": 60, "spd": 35, "skl": 40, "lck": 15},
+    "items": [], "skills": ["DARK_BOLT"],
+    "is_hero": false, "awakening_type": null,
+    "sprite": "blue_dragon", "portrait": null,
+    "color_fallback": [30, 60, 200],
+    "difficulty_tier": "hard"
+  },
+
+  "YELLOW_DRAGON": {
+    "nombre": "Dragón Dorado",
+    "clase": "Dragón",
+    "mov": 5, "hp": 52, "mp": 20,
+    "str": 15, "def": 7, "mag": 6, "spd": 7, "skl": 8, "lck": 5,
+    "crecimientos": {"hp": 85, "str": 75, "def": 55, "spd": 45, "skl": 50, "lck": 30},
+    "items": [], "skills": ["FEROCIOUS_STRIKE"],
+    "is_hero": false, "awakening_type": null,
+    "sprite": "yellow_dragon", "portrait": null,
+    "color_fallback": [200, 180, 20],
+    "difficulty_tier": "hard"
+  },
+
+  "GIANT_CRAB": {
+    "nombre": "Cangrejo Gigante",
+    "clase": "Animal Gigante",
+    "mov": 3, "hp": 50, "mp": 0,
+    "str": 12, "def": 12, "mag": 0, "spd": 3, "skl": 4, "lck": 2,
+    "crecimientos": {"hp": 90, "str": 55, "def": 80, "spd": 10, "skl": 20, "lck": 10},
+    "items": [], "skills": [],
+    "is_hero": false, "awakening_type": null,
+    "sprite": "giant_crab", "portrait": null,
+    "color_fallback": [200, 100, 40],
     "difficulty_tier": "hard"
   },
 
@@ -189,8 +306,34 @@
     "crecimientos": {"hp": 100, "str": 75, "def": 65, "spd": 10, "skl": 10, "lck": 5},
     "items": [], "skills": [],
     "is_hero": false, "awakening_type": null,
-    "sprite": "orc", "portrait": null,
+    "sprite": "mammoth", "portrait": null,
     "color_fallback": [180, 200, 220],
+    "difficulty_tier": "boss"
+  },
+
+  "BLACK_DRAGON": {
+    "nombre": "Dragón Negro",
+    "clase": "Dragón Jefe",
+    "mov": 5, "hp": 75, "mp": 35,
+    "str": 18, "def": 12, "mag": 12, "spd": 6, "skl": 8, "lck": 3,
+    "crecimientos": {"hp": 100, "str": 80, "def": 75, "spd": 35, "skl": 45, "lck": 10},
+    "items": [], "skills": ["DARK_BOLT", "FEROCIOUS_STRIKE"],
+    "is_hero": false, "awakening_type": null,
+    "sprite": "black_dragon", "portrait": null,
+    "color_fallback": [30, 30, 30],
+    "difficulty_tier": "boss"
+  },
+
+  "WHITE_DRAGON": {
+    "nombre": "Dragón Blanco",
+    "clase": "Dragón Jefe",
+    "mov": 5, "hp": 70, "mp": 50,
+    "str": 16, "def": 10, "mag": 16, "spd": 7, "skl": 10, "lck": 5,
+    "crecimientos": {"hp": 95, "str": 75, "def": 65, "spd": 40, "skl": 60, "lck": 25},
+    "items": [], "skills": ["DARK_BOLT", "HEAL"],
+    "is_hero": false, "awakening_type": null,
+    "sprite": "white_dragon", "portrait": null,
+    "color_fallback": [230, 230, 230],
     "difficulty_tier": "boss"
   },
 

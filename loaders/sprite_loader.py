@@ -45,9 +45,13 @@ _cache: dict = {}
 
 UNIT_SPRITE_PATHS = {
     # ---------- Aliados — Champions ----------
-    "kael": os.path.join("units", "allies", "Champions", "Kael", "map", "Kael.png"),
-    "lyra": os.path.join("units", "allies", "Champions", "Lyra", "map", "Lyra.png"),
-    "ryn":  os.path.join("units", "allies", "Champions", "Ryn",  "map", "Ryn.png"),
+    "kael":   os.path.join("units", "allies", "Champions", "Kael",   "map", "Kael.png"),
+    "lyra":   os.path.join("units", "allies", "Champions", "Lyra",   "map", "Lyra.png"),
+    "ryn":    os.path.join("units", "allies", "Champions", "Ryn",    "map", "Ryn.png"),
+    "theron": os.path.join("units", "allies", "Champions", "Theron", "map", "Katan.png"),
+    "mira":   os.path.join("units", "allies", "Champions", "Mira",   "map", "Grum.png"),
+    "zeph":   os.path.join("units", "allies", "Champions", "Zeph",   "map", "Okomo.png"),
+    "aldric": os.path.join("units", "allies", "Champions", "Aldric", "map", "B\u00f6rg.png"),
 
     # ---------- Aliados — Soldados (variante Lime como default) ----------
     "swordsman": os.path.join("units", "allies", "Soldiers", "Melee",  "LimeMelee",  "SwordsmanLime.png"),
@@ -58,28 +62,69 @@ UNIT_SPRITE_PATHS = {
     "mage_ally": os.path.join("units", "allies", "Soldiers", "Ranged", "LimeRanged", "MageLime.png"),
     "knight":    os.path.join("units", "allies", "Soldiers", "Mounted","CyanKnight.png"),
 
-    # ---------- Enemigos ----------
-    "bandit":     os.path.join("units", "enemies", "Orcs",    "ClubGoblin.png"),
-    "orc":        os.path.join("units", "enemies", "Orcs",    "Orc.png"),
+    # ---------- Enemigos — Orcos y Goblins ----------
+    "bandit":         os.path.join("units", "enemies", "Orcs",    "ClubGoblin.png"),
+    "goblin":         os.path.join("units", "enemies", "Orcs",    "ClubGoblin.png"),
+    "goblin_club":    os.path.join("units", "enemies", "Orcs",    "ClubGoblin.png"),
+    "goblin_spear":   os.path.join("units", "enemies", "Orcs",    "SpearGoblin.png"),
+    "goblin_archer":  os.path.join("units", "enemies", "Orcs",    "ArcherGoblin.png"),
+    "farmer_goblin":  os.path.join("units", "enemies", "Orcs",    "FarmerGoblin.png"),
+    "kamikaze_goblin":os.path.join("units", "enemies", "Orcs",    "KamikazeGoblin.png"),
+    "orc":            os.path.join("units", "enemies", "Orcs",    "Orc.png"),
+    "orc_shaman":     os.path.join("units", "enemies", "Orcs",    "OrcShaman.png"),
+    "orc_mage":       os.path.join("units", "enemies", "Orcs",    "OrcMage.png"),
+    "minotaur":       os.path.join("units", "enemies", "Orcs",    "Minotaur.png"),
+
+    # ---------- Enemigos — No Muertos ----------
     "dark_mage":  os.path.join("units", "enemies", "Undead",  "Necromancer.png"),
     "skeleton":   os.path.join("units", "enemies", "Undead",  "Skeleton-Soldier.png"),
-    "goblin":     os.path.join("units", "enemies", "Orcs",    "ClubGoblin.png"),
-    "orc_shaman": os.path.join("units", "enemies", "Orcs",    "OrcShaman.png"),
-    "orc_mage":   os.path.join("units", "enemies", "Orcs",    "OrcMage.png"),
-    "minotaur":   os.path.join("units", "enemies", "Orcs",    "Minotaur.png"),
-    "demon":      os.path.join("units", "enemies", "Demons",  "RedDemon.png"),
     "necromancer":os.path.join("units", "enemies", "Undead",  "Necromancer.png"),
-    "slime":      os.path.join("units", "enemies", "Slimes",  "Slime.png"),
-    "dragon":     os.path.join("units", "enemies", "Dragons", "RedDragon.png"),
-    "pirate":     os.path.join("units", "enemies", "Pirates", "PirateGrunt.png"),
-    "dummy":      None,  # sin sprite → fallback siempre
+
+    # ---------- Enemigos — Demonios ----------
+    "demon":          os.path.join("units", "enemies", "Demons",  "RedDemon.png"),
+    "armoured_demon": os.path.join("units", "enemies", "Demons",  "ArmouredRedDemon.png"),
+    "purple_demon":   os.path.join("units", "enemies", "Demons",  "PurpleDemon.png"),
+
+    # ---------- Enemigos — Dragones ----------
+    "dragon":       os.path.join("units", "enemies", "Dragons", "RedDragon.png"),
+    "black_dragon": os.path.join("units", "enemies", "Dragons", "BlackDragon.png"),
+    "blue_dragon":  os.path.join("units", "enemies", "Dragons", "BlueDragon.png"),
+    "white_dragon": os.path.join("units", "enemies", "Dragons", "WhiteDragon.png"),
+    "yellow_dragon":os.path.join("units", "enemies", "Dragons", "YellowDragon.png"),
+
+    # ---------- Enemigos — Frostborn ----------
+    "mammoth": os.path.join("units", "enemies", "Frostborn", "Mammoth.png"),
+    "wendigo": os.path.join("units", "enemies", "Frostborn", "Wendigo.png"),
+    "yeti":    os.path.join("units", "enemies", "Frostborn", "Yeti.png"),
+
+    # ---------- Enemigos — Animales Gigantes ----------
+    "giant_crab": os.path.join("units", "enemies", "GiantAnimals", "GiantCrab.png"),
+
+    # ---------- Enemigos — Limos ----------
+    "slime":       os.path.join("units", "enemies", "Slimes",  "Slime.png"),
+    "slime_blue":  os.path.join("units", "enemies", "Slimes",  "SlimeBlue.png"),
+    "mega_slime":  os.path.join("units", "enemies", "Slimes",  "MegaSlimeGreen.png"),
+    "king_slime":  os.path.join("units", "enemies", "Slimes",  "KingSlimeGreen.png"),
+
+    # ---------- Enemigos — Piratas ----------
+    "pirate":         os.path.join("units", "enemies", "Pirates", "PirateGrunt.png"),
+    "pirate_captain": os.path.join("units", "enemies", "Pirates", "PirateCaptain.png"),
+    "pirate_gunner":  os.path.join("units", "enemies", "Pirates", "PirateGunner.png"),
+
+    "dummy": None,  # sin sprite → fallback siempre
 }
 
 TILE_SPRITE_PATHS = {
-    0: os.path.join("tiles", "Ground",  "Grass.png"),        # Hierba
-    1: os.path.join("tiles", "Nature",  "Trees.png"),         # Bosque
-    2: os.path.join("tiles", "Ground",  "Cliff.png"),         # Muro/Montaña
-    3: os.path.join("tiles", "Ground",  "Shore.png"),         # Agua
+    0: os.path.join("tiles", "Ground",  "Grass.png"),              # Hierba
+    1: os.path.join("tiles", "Nature",  "Trees.png"),              # Bosque
+    2: os.path.join("tiles", "Ground",  "Cliff.png"),              # Muro/Montaña
+    3: os.path.join("tiles", "Ground",  "Shore.png"),              # Agua
+    4: os.path.join("tiles", "Ground",  "DeadGrass.png"),          # Hierba seca/arena
+    5: os.path.join("tiles", "Nature",  "Rocks.png"),              # Rocas pequeñas
+    6: os.path.join("tiles", "Ground",  "Cliff-Water.png"),        # Agua profunda
+    7: os.path.join("tiles", "Ground",  "Winter.png"),             # Suelo nevado
+    8: os.path.join("tiles", "Nature",  "WinterTrees.png"),        # Árboles invernales
+    9: os.path.join("tiles", "Nature",  "DeadTrees.png"),          # Árboles muertos
 }
 
 # FX: clave lógica → subcarpeta relativa a _SPRITES
@@ -210,23 +255,61 @@ def _load_sheet(rel_path: str) -> Optional[SpriteSheetLoader]:
 # Cada tipo de unidad tiene forma distinta para ser reconocible sin sprites.
 
 _UNIT_FALLBACK_SHAPES = {
-    # Aliados
-    "kael":      {"shape": "diamond",       "color": (50,  80, 220)},
-    "lyra":      {"shape": "cross",         "color": (220, 220,  80)},
-    "ryn":       {"shape": "triangle_up",   "color": (80,  200,  80)},
-    "swordsman": {"shape": "triangle_up",   "color": (60,  100, 200)},
-    "axeman":    {"shape": "triangle_up",   "color": (40,  160, 200)},
-    "bowman":    {"shape": "triangle_up",   "color": (40,  180, 100)},
-    "knight":    {"shape": "diamond",       "color": (80,  80,  220)},
-    # Enemigos
-    "bandit":    {"shape": "triangle_down", "color": (200,  60,  60)},
-    "orc":       {"shape": "square",        "color": (160,  40,  40)},
-    "dark_mage": {"shape": "diamond",       "color": (120,  20, 180)},
-    "skeleton":  {"shape": "cross",         "color": (180, 180, 180)},
-    "demon":     {"shape": "triangle_down", "color": (200,  20,  20)},
-    "dragon":    {"shape": "square",        "color": (180,  30,  30)},
-    "slime":     {"shape": "circle",        "color": (60,  200,  60)},
-    "dummy":     {"shape": "circle",        "color": (120, 120, 120)},
+    # Aliados — Champions
+    "kael":   {"shape": "diamond",     "color": (50,  80, 220)},
+    "lyra":   {"shape": "cross",       "color": (220, 220,  80)},
+    "ryn":    {"shape": "triangle_up", "color": (80,  200,  80)},
+    "theron": {"shape": "triangle_up", "color": (80,  200,  80)},
+    "mira":   {"shape": "diamond",     "color": (180,  80, 180)},
+    "zeph":   {"shape": "cross",       "color": (60,  200, 200)},
+    "aldric": {"shape": "diamond",     "color": (220, 140,  40)},
+    # Aliados — Soldados
+    "swordsman": {"shape": "triangle_up", "color": (60,  100, 200)},
+    "axeman":    {"shape": "triangle_up", "color": (40,  160, 200)},
+    "bowman":    {"shape": "triangle_up", "color": (40,  180, 100)},
+    "knight":    {"shape": "diamond",     "color": (80,   80, 220)},
+    # Enemigos — Orcos/Goblins
+    "bandit":          {"shape": "triangle_down", "color": (200,  60,  60)},
+    "goblin":          {"shape": "triangle_down", "color": (160, 100,  40)},
+    "goblin_club":     {"shape": "triangle_down", "color": (180,  80,  20)},
+    "goblin_spear":    {"shape": "triangle_down", "color": (160, 100,  40)},
+    "goblin_archer":   {"shape": "triangle_down", "color": (140, 100,  30)},
+    "farmer_goblin":   {"shape": "triangle_down", "color": (120, 130,  40)},
+    "kamikaze_goblin": {"shape": "triangle_down", "color": (220,  80,  20)},
+    "orc":             {"shape": "square",        "color": (160,  40,  40)},
+    "orc_shaman":      {"shape": "diamond",       "color": (100,  30, 150)},
+    "orc_mage":        {"shape": "diamond",       "color": (120,  40, 160)},
+    "minotaur":        {"shape": "square",        "color": (140,  50,  20)},
+    # Enemigos — No Muertos
+    "dark_mage":  {"shape": "diamond", "color": (120,  20, 180)},
+    "skeleton":   {"shape": "cross",   "color": (180, 180, 180)},
+    "necromancer":{"shape": "diamond", "color": ( 80,   0, 120)},
+    # Enemigos — Demonios
+    "demon":          {"shape": "triangle_down", "color": (200,  20,  20)},
+    "armoured_demon": {"shape": "square",        "color": (160,  10,  10)},
+    "purple_demon":   {"shape": "triangle_down", "color": (140,  20, 160)},
+    # Enemigos — Dragones
+    "dragon":       {"shape": "square", "color": (180,  30,  30)},
+    "black_dragon": {"shape": "square", "color": ( 30,  30,  30)},
+    "blue_dragon":  {"shape": "square", "color": ( 30,  60, 200)},
+    "white_dragon": {"shape": "diamond","color": (230, 230, 230)},
+    "yellow_dragon":{"shape": "square", "color": (200, 180,  20)},
+    # Enemigos — Frostborn
+    "mammoth": {"shape": "square",  "color": (180, 200, 220)},
+    "wendigo": {"shape": "diamond", "color": (140, 180, 220)},
+    "yeti":    {"shape": "square",  "color": (200, 220, 240)},
+    # Enemigos — Animales
+    "giant_crab": {"shape": "square", "color": (200, 100,  40)},
+    # Enemigos — Limos
+    "slime":      {"shape": "circle", "color": ( 60, 200,  60)},
+    "slime_blue": {"shape": "circle", "color": ( 60, 130, 220)},
+    "mega_slime": {"shape": "circle", "color": ( 40, 180,  40)},
+    "king_slime": {"shape": "square", "color": ( 20, 150,  20)},
+    # Enemigos — Piratas
+    "pirate":         {"shape": "triangle_down", "color": ( 30, 100, 160)},
+    "pirate_captain": {"shape": "diamond",       "color": ( 20,  70, 140)},
+    "pirate_gunner":  {"shape": "triangle_down", "color": ( 20,  80, 140)},
+    "dummy":          {"shape": "circle",        "color": (120, 120, 120)},
 }
 _DEFAULT_ALLY  = {"shape": "triangle_up",   "color": (60,  100, 220)}
 _DEFAULT_ENEMY = {"shape": "triangle_down", "color": (200,  60,  60)}

@@ -37,6 +37,16 @@ DORADO_COFRE = (255, 215, 0)
 
 PURPURA_TRONO = (148, 0, 211)  # Trono
 
+# UI Persona-style (combat menus)
+PERSONA_BLACK  = (8,   8,  14)   # Fondo de panel casi negro
+PERSONA_RED    = (210, 18,  18)  # Acento rojo principal
+PERSONA_WHITE  = (245, 245, 250) # Texto principal
+PERSONA_GOLD   = (255, 210,  40) # Acento dorado (Awakening / highlight)
+PERSONA_PANEL  = (12,  12,  22)  # Fondo de panel oscuro
+PERSONA_STRIP  = (180, 15,  15)  # Franja lateral de menú activo
+PERSONA_ALLY   = (30,  90, 200)  # Azul bando aliado
+PERSONA_ENEMY  = (200, 25,  25)  # Rojo bando enemigo
+
 # Sprites / Animación
 TILE_ORIGINAL_SIZE = 16   # tamaño original de cada frame en el pack (16×16 mini world)
 ANIM_SPEED_MAP     = 18   # ticks de juego por frame de animación en mapa (~3fps a 60fps)
@@ -47,7 +57,13 @@ ANIM_SPEED_FX      = 3    # ticks de juego por frame de animación FX (~20fps a 
 # esquive: bonus de esquive (%) que da al defensor que está en esta casilla
 INFO_TERRENO = {
     0: {"color": (100, 220, 100), "costo": 1,   "esquive": 0},   # Hierba
-    1: {"color": (30, 120, 30),   "costo": 2,   "esquive": 20},  # Bosque
+    1: {"color": (30,  120,  30), "costo": 2,   "esquive": 20},  # Bosque
     2: {"color": (120, 120, 120), "costo": 999, "esquive": 0},   # Muro/Montaña (impassable)
-    3: {"color": (50, 100, 200),  "costo": 999, "esquive": 0},   # Agua (impassable)
+    3: {"color": (50,  100, 200), "costo": 999, "esquive": 0},   # Agua (impassable)
+    4: {"color": (165, 170,  90), "costo": 1,   "esquive": 0},   # Hierba Seca / Arena
+    5: {"color": (100,  90,  75), "costo": 999, "esquive": 0},   # Rocas pequeñas (impassable)
+    6: {"color": (20,   55, 165), "costo": 999, "esquive": 0},   # Agua Profunda (impassable)
+    7: {"color": (218, 230, 242), "costo": 1,   "esquive": 0},   # Suelo Nevado
+    8: {"color": (185, 212, 228), "costo": 2,   "esquive": 20},  # Árboles Invernales
+    9: {"color": (75,   65,  48), "costo": 1,   "esquive": 8},   # Árboles Muertos
 }
