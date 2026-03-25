@@ -9,7 +9,7 @@ import pygame
 import constants as C
 from loaders.sprite_loader import (
     get_tile_sprite, get_portrait_hud,
-    get_unit_map_frames, get_ui_sprite,
+    get_unit_map_frames, get_ui_sprite, is_large_sprite,
 )
 from ui.battle_preview import draw_battle_preview
 from systems.rogue_system import MIN_HEROES, MAX_HEROES
@@ -263,66 +263,111 @@ class UIRenderer:
             ("[1]  Nueva PvP — Local",       C.BLANCO),
             ("[2]  Nueva PvE — vs IA",        C.BLANCO),
             ("[3]  Controles",                C.GRIS_INACTIVO),
+            ("[5]  Puntajes",                 (160, 170, 195)),
         ]
         if has_sv:
             opciones.insert(0, ("[4]  Continuar run guardada", C.AMARILLO_AWK))
 
         n_opts  = len(opciones)
         box_w   = 340
-        box_h   = 30 + n_opts * 48 + 20
+        box_h   = 30 + n_opts * 44 + 20
         box_x   = cx - box_w // 2
         box_y   = 198
         self._draw_panel(surf, box_x, box_y, box_w, box_h,
                          alpha=220, accent=C.AMARILLO_AWK)
 
         for i, (op, col) in enumerate(opciones):
-            oy = box_y + 30 + i * 48
-            # Fila resaltada si tiene save (primera opción)
+            oy = box_y + 30 + i * 44
             if has_sv and i == 0:
-                hl = pygame.Surface((box_w - 8, 38), pygame.SRCALPHA)
+                hl = pygame.Surface((box_w - 8, 36), pygame.SRCALPHA)
                 hl.fill((255, 200, 0, 25))
                 surf.blit(hl, (box_x + 4, oy - 8))
             lbl = self.font_std.render(op, True, col)
             surf.blit(lbl, lbl.get_rect(center=(cx, oy)))
-            # Separador entre opciones
             if i < n_opts - 1:
                 pygame.draw.line(surf, (40, 55, 90),
-                                 (box_x + 20, oy + 20), (box_x + box_w - 20, oy + 20), 1)
+                                 (box_x + 20, oy + 18), (box_x + box_w - 20, oy + 18), 1)
+
+        # Mejor puntaje (solo #1) — inline debajo del panel
+        top = state.get("top_scores", []) if state else []
+        if top:
+            e    = top[0]
+            best_y = box_y + box_h + 10
+            self._draw_panel(surf, box_x, best_y, box_w, 34, alpha=185, accent=C.AMARILLO_AWK)
+            bs = self.font_mini.render(
+                f"① MEJOR  {e.get('total', 0):,}  pts   ×{e.get('maps', 0)} mapas   [{e.get('tier','?')[:3].upper()}]",
+                True, C.AMARILLO_AWK)
+            surf.blit(bs, bs.get_rect(center=(cx, best_y + 17)))
 
         # Hint inferior
         hint = self.font_mini.render("Mapas y unidades configurables en  data/", True, (70, 80, 100))
         surf.blit(hint, hint.get_rect(center=(cx, H - 22)))
 
-    def draw_top_scores(self, surf, top_scores: list):
-        """Panel de mejores puntajes superpuesto al menú principal."""
+    def draw_all_scores(self, surf, top_scores: list):
+        """Pantalla dedicada de puntajes — estilo Persona con tabla completa."""
+        W, H = C.ANCHO_PANTALLA, C.ALTO_PANTALLA
+        cx = W // 2
+
+        self._draw_gradient_bg(surf, 4, 6, 18, 10, 14, 35)
+        self._draw_diagonal_accent(surf, (120, 100, 10), alpha=35)
+
+        self._draw_title_bar(surf, "RANKING DE PUNTAJES", 42)
+        pygame.draw.line(surf, C.AMARILLO_AWK, (50, 64), (W - 50, 64), 1)
+
         if not top_scores:
-            return
-        bw = 272
-        bh = 32 + len(top_scores) * 26 + 8
-        bx = C.ANCHO_PANTALLA - bw - 18
-        by = 200
-        self._draw_panel(surf, bx, by, bw, bh, alpha=220, accent=C.AMARILLO_AWK)
+            msg = self.font_std.render("Aún no hay puntajes registrados.", True, (130, 140, 155))
+            surf.blit(msg, msg.get_rect(center=(cx, H // 2)))
+        else:
+            medals      = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩"]
+            medal_cols  = [
+                C.PERSONA_GOLD,
+                (200, 210, 215),
+                (200, 145, 70),
+                (180, 185, 195),
+                (170, 175, 185),
+            ]
+            # Cabecera de tabla
+            header_y = 82
+            pw, ph   = W - 120, len(top_scores) * 38 + 52
+            self._draw_panel(surf, 60, header_y, pw, ph, alpha=215, accent=C.AMARILLO_AWK)
 
-        hdr = self.font_mini.render("TOP SCORES", True, C.AMARILLO_AWK)
-        surf.blit(hdr, hdr.get_rect(center=(bx + bw // 2, by + 12)))
-        pygame.draw.line(surf, (60, 80, 40),
-                         (bx + 12, by + 24), (bx + bw - 12, by + 24), 1)
+            # Títulos de columnas
+            cols_x = [80, 130, 300, 430, 530]
+            hdrs   = ["#", "Puntos", "Mapas", "Dif.", "Modo"]
+            for hx, ht in zip(cols_x, hdrs):
+                hs = self.font_mini.render(ht, True, (140, 150, 170))
+                surf.blit(hs, (hx, header_y + 8))
+            pygame.draw.line(surf, (60, 70, 100),
+                             (76, header_y + 26), (60 + pw - 6, header_y + 26), 1)
 
-        medals = ["①", "②", "③", "④", "⑤"]
-        for i, entry in enumerate(top_scores):
-            total = entry.get("total", 0)
-            maps  = entry.get("maps",  0)
-            tier  = entry.get("tier",  "?")[:3].upper()
-            ry    = by + 32 + i * 26
-            col   = C.AMARILLO_AWK if i == 0 else (200, 210, 200) if i == 1 else (180, 185, 195)
-            medal = medals[i] if i < len(medals) else f"#{i+1}"
-            surf.blit(self.font_mini.render(medal,              True, col), (bx + 10, ry))
-            surf.blit(self.font_mini.render(f"{total:>8,}",     True, col), (bx + 34, ry))
-            surf.blit(self.font_mini.render(f"×{maps}",         True, (150, 160, 150)), (bx + 160, ry))
-            surf.blit(self.font_mini.render(f"[{tier}]",        True, (130, 140, 160)), (bx + 210, ry))
-            if i < len(top_scores) - 1:
-                pygame.draw.line(surf, (30, 42, 65),
-                                 (bx + 10, ry + 20), (bx + bw - 10, ry + 20), 1)
+            for i, entry in enumerate(top_scores):
+                ry    = header_y + 32 + i * 38
+                col   = medal_cols[i] if i < len(medal_cols) else (165, 170, 180)
+                medal = medals[i] if i < len(medals) else f"#{i+1}"
+
+                # Fondo de fila alternado
+                if i % 2 == 0:
+                    row_bg = pygame.Surface((pw - 8, 34), pygame.SRCALPHA)
+                    row_bg.fill((255, 255, 255, 6))
+                    surf.blit(row_bg, (64, ry + 2))
+
+                total = entry.get("total", 0)
+                maps  = entry.get("maps",  0)
+                tier  = entry.get("tier",  "?")[:4].upper()
+                modo  = entry.get("modo",  "PVE")[:3].upper()
+
+                surf.blit(self.font_std.render(medal,          True, col),           (cols_x[0], ry + 6))
+                surf.blit(self.font_std.render(f"{total:,}",   True, col),           (cols_x[1], ry + 6))
+                surf.blit(self.font_mini.render(f"× {maps}",   True, (160, 170, 180)), (cols_x[2], ry + 8))
+                surf.blit(self.font_mini.render(f"[{tier}]",   True, (140, 150, 165)), (cols_x[3], ry + 8))
+                surf.blit(self.font_mini.render(modo,          True, (130, 140, 155)), (cols_x[4], ry + 8))
+
+                if i < len(top_scores) - 1:
+                    pygame.draw.line(surf, (35, 45, 68),
+                                     (76, ry + 36), (60 + pw - 6, ry + 36), 1)
+
+        hint = self.font_mini.render("ESC — Volver al menú", True, (80, 90, 110))
+        surf.blit(hint, hint.get_rect(center=(cx, H - 20)))
 
     def draw_controls_menu(self, surf):
         W, H = C.ANCHO_PANTALLA, C.ALTO_PANTALLA
@@ -1127,33 +1172,42 @@ class UIRenderer:
             sprite = sprite.copy()
             sprite.set_alpha(110)
 
-        # Halo dorado si está en awakening
+        # Detectar sprite grande (64×64) — dragones, mamuts, etc.
+        sw, sh = sprite.get_width(), sprite.get_height()
+        is_large = sw > C.TAMANO_TILE or sh > C.TAMANO_TILE
+        # Centrar horizontalmente y anclar la base del sprite al borde inferior del tile
+        draw_x = px - (sw - C.TAMANO_TILE) // 2
+        draw_y = py - (sh - C.TAMANO_TILE)
+
+        # Halo dorado si está en awakening (ajustado al tamaño real del sprite)
         if getattr(u, "awakened", False):
-            pygame.draw.rect(surf, C.AMARILLO_AWK, (px - 1, py - 1, 34, 34), 2)
+            pygame.draw.rect(surf, C.AMARILLO_AWK, (draw_x - 1, draw_y - 1, sw + 2, sh + 2), 2)
 
-        surf.blit(sprite, (px, py))
+        surf.blit(sprite, (draw_x, draw_y))
 
-        # Nombre corto encima (solo en hover lo muestra el panel; aquí solo barra)
+        # Barras encima del sprite (HP/MP sobre la cabeza)
         bar_x = px + 1
         bar_w = C.TAMANO_TILE - 2
+        bar_top = draw_y - 5  # 5px sobre el borde superior del sprite
 
         # Barra HP
         pct_hp = max(0.0, u.hp_actual / u.max_hp) if u.max_hp > 0 else 0.0
-        pygame.draw.rect(surf, C.NEGRO,    (bar_x, py - 5, bar_w, 4))
-        pygame.draw.rect(surf, C.ROJO_HP,  (bar_x, py - 5, bar_w, 4))
-        pygame.draw.rect(surf, C.VERDE_HP, (bar_x, py - 5, int(bar_w * pct_hp), 4))
+        pygame.draw.rect(surf, C.NEGRO,    (bar_x, bar_top, bar_w, 4))
+        pygame.draw.rect(surf, C.ROJO_HP,  (bar_x, bar_top, bar_w, 4))
+        pygame.draw.rect(surf, C.VERDE_HP, (bar_x, bar_top, int(bar_w * pct_hp), 4))
 
         # Barra MP
         if u.max_mp > 0:
             pct_mp = max(0.0, u.mp_actual / u.max_mp)
-            pygame.draw.rect(surf, C.NEGRO,   (bar_x, py - 1, bar_w, 2))
-            pygame.draw.rect(surf, C.AZUL_MP, (bar_x, py - 1, int(bar_w * pct_mp), 2))
+            pygame.draw.rect(surf, C.NEGRO,   (bar_x, bar_top + 4, bar_w, 2))
+            pygame.draw.rect(surf, C.AZUL_MP, (bar_x, bar_top + 4, int(bar_w * pct_mp), 2))
 
-        # Barra Awakening (solo héroes)
+        # Barra Awakening (solo héroes) — bajo el tile
         if u.es_heroe and getattr(u, "awakening_type", None):
             pct_awk = getattr(u, "awakening_meter", 0) / 100
-            pygame.draw.rect(surf, C.NEGRO,       (bar_x, py + C.TAMANO_TILE, bar_w, 2))
-            pygame.draw.rect(surf, C.AMARILLO_AWK,(bar_x, py + C.TAMANO_TILE, int(bar_w * pct_awk), 2))
+            awk_y = py + C.TAMANO_TILE
+            pygame.draw.rect(surf, C.NEGRO,       (bar_x, awk_y, bar_w, 2))
+            pygame.draw.rect(surf, C.AMARILLO_AWK,(bar_x, awk_y, int(bar_w * pct_awk), 2))
 
         # Nivel (esquina superior derecha del tile)
         lvl = self.font_mini.render(str(u.nivel), True, C.BLANCO)
@@ -1301,27 +1355,12 @@ class UIRenderer:
         self._draw_title_bar(surf, "ELIGE UNA MEJORA", 40)
         pygame.draw.line(surf, C.AMARILLO_AWK, (50, 62), (W - 50, 62), 1)
 
-        choices  = state.get("relic_choices", [])
-        cursor   = state.get("relic_cursor", 0)
-        acquired = state.get("rogue_relics", [])
+        choices       = state.get("relic_choices", [])
+        cursor        = state.get("relic_cursor", 0)
+        acquired      = state.get("rogue_relics", [])
+        show_acquired = state.get("show_acquired_relics", False)
 
-        # Panel lateral izquierdo: reliquias ya adquiridas
-        if acquired:
-            panel_w = 165
-            panel_h = 28 + len(acquired) * 22
-            self._draw_panel(surf, 14, 75, panel_w, panel_h,
-                             alpha=200, accent=C.AMARILLO_AWK)
-            surf.blit(self.font_mini.render("YA ADQUIRIDAS", True, C.AMARILLO_AWK),
-                      (22, 80))
-            pygame.draw.line(surf, (80, 100, 60), (22, 94), (14 + panel_w - 8, 94), 1)
-            for i, r in enumerate(acquired):
-                dot = pygame.Surface((8, 8), pygame.SRCALPHA)
-                pygame.draw.circle(dot, (*r.color, 220), (4, 4), 4)
-                surf.blit(dot, (22, 99 + i * 22 + 3))
-                surf.blit(self.font_mini.render(r.nombre, True, (200, 215, 200)),
-                          (34, 99 + i * 22))
-
-        # Cartas de reliquias — centradas en el área restante
+        # Cartas de reliquias — centradas
         card_w, card_h = 205, 210
         spacing = 24
         total_w = len(choices) * (card_w + spacing) - spacing
@@ -1382,10 +1421,59 @@ class UIRenderer:
                 arr = self.font_ui_title.render("▼", True, C.AMARILLO_AWK)
                 surf.blit(arr, arr.get_rect(center=(rx + card_w // 2, ry + card_h + 14)))
 
+        # Botón "Items adquiridos" — debajo de las cartas
+        btn_y = card_y + card_h + 28
+        if acquired:
+            btn_w, btn_h = 220, 32
+            btn_x = cx - btn_w // 2
+            btn_bg = pygame.Surface((btn_w, btn_h), pygame.SRCALPHA)
+            btn_col = C.AMARILLO_AWK if show_acquired else (100, 80, 150)
+            btn_bg.fill((*btn_col, 55))
+            surf.blit(btn_bg, (btn_x, btn_y))
+            pygame.draw.rect(surf, btn_col, (btn_x, btn_y, btn_w, btn_h), 1)
+            arrow = "▲" if show_acquired else "▼"
+            btn_lbl = self.font_std.render(
+                f"{arrow}  Items adquiridos ({len(acquired)})  {arrow}",
+                True, btn_col)
+            surf.blit(btn_lbl, btn_lbl.get_rect(center=(cx, btn_y + btn_h // 2)))
+
+            # Panel desplegable de items adquiridos (bajo el botón)
+            if show_acquired:
+                t = self._anim_t("acquired_panel")
+                panel_w = 440
+                panel_h = 26 + len(acquired) * 26 + 10
+                panel_x = cx - panel_w // 2
+                # Slide desde abajo
+                panel_y = int(btn_y + btn_h + 4 + panel_h * (1 - t))
+                panel_clip_y = btn_y + btn_h + 4
+
+                # Dibujar solo en el área por debajo del botón
+                clip_rect = surf.get_clip()
+                surf.set_clip(pygame.Rect(0, panel_clip_y, W, H - panel_clip_y))
+
+                self._draw_persona_panel(surf, panel_x, panel_y, panel_w, panel_h,
+                                         "ITEMS ADQUIRIDOS", accent=C.AMARILLO_AWK)
+                for i, r in enumerate(acquired):
+                    ry = panel_y + 30 + i * 26
+                    # Punto de color de la reliquia
+                    pygame.draw.circle(surf, r.color, (panel_x + 20, ry + 9), 6)
+                    pygame.draw.circle(surf, C.PERSONA_WHITE, (panel_x + 20, ry + 9), 6, 1)
+                    surf.blit(self.font_std.render(r.nombre, True, C.PERSONA_WHITE),
+                              (panel_x + 34, ry + 1))
+                    desc_s = self.font_mini.render(r.descripcion, True, (150, 160, 175))
+                    surf.blit(desc_s, (panel_x + panel_w - desc_s.get_width() - 10, ry + 5))
+
+                surf.set_clip(clip_rect)
+            else:
+                self._anim_reset("acquired_panel")
+
         # Barra de instrucciones inferior
-        self._draw_panel(surf, 40, H - 50, W - 80, 36, alpha=190, accent=(80, 60, 130))
-        inst = self.font_std.render("◄ ► Mover cursor     ENTER Confirmar elección", True, (180, 175, 220))
-        surf.blit(inst, inst.get_rect(center=(cx, H - 32)))
+        inst_txt = "◄ ► Mover     ENTER Confirmar"
+        if acquired:
+            inst_txt += "     [TAB] Items adquiridos"
+        self._draw_panel(surf, 40, H - 46, W - 80, 32, alpha=190, accent=(80, 60, 130))
+        inst = self.font_std.render(inst_txt, True, (180, 175, 220))
+        surf.blit(inst, inst.get_rect(center=(cx, H - 30)))
 
     # -------------------------
     # Render principal
@@ -1395,9 +1483,9 @@ class UIRenderer:
 
         if estado == "MENU_PRINCIPAL":
             self.draw_main_menu(surf, state)
-            top = state.get("top_scores", [])
-            if top:
-                self.draw_top_scores(surf, top)
+            return
+        if estado == "MENU_PUNTAJES":
+            self.draw_all_scores(surf, state.get("top_scores", []))
             return
         if estado == "MENU_CONTROLES":
             self.draw_controls_menu(surf)

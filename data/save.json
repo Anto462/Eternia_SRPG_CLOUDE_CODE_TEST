@@ -1,21 +1,36 @@
 {
-  "map_number": 1,
-  "last_map_name": "Cruce del Río",
+  "map_number": 6,
+  "last_map_name": "Fortaleza de la Montaña",
   "modo_juego": "PVE",
   "score": {
-    "total": 590,
-    "kills": 0,
-    "maps_cleared": 1
+    "total": 8762,
+    "kills": 14,
+    "maps_cleared": 6
   },
   "rogue": {
     "selected_heroes": [
       "HERO_ALLY",
-      "ZEPH_ALLY",
-      "THERON_ALLY"
+      "ARCHER_ALLY",
+      "ZEPH_ALLY"
     ],
     "acquired_relics": [
       {
+        "relic_id": "corazon_piedra"
+      },
+      {
         "relic_id": "sigilo_elfico"
+      },
+      {
+        "relic_id": "filo_caos"
+      },
+      {
+        "relic_id": "phylactery"
+      },
+      {
+        "relic_id": "orbe_magia"
+      },
+      {
+        "relic_id": "ojo_critico"
       }
     ],
     "score_multiplier": 1.0
@@ -25,16 +40,16 @@
       "unit_id": "HERO_ALLY",
       "nombre": "Kael",
       "x": 3,
-      "y": 7,
+      "y": 14,
       "bando": "aliado",
-      "hp_actual": 32,
-      "max_hp": 32,
-      "mp_actual": 20,
-      "max_mp": 20,
+      "hp_actual": 47,
+      "max_hp": 47,
+      "mp_actual": 30,
+      "max_mp": 30,
       "nivel": 1,
       "exp": 0,
-      "fuerza": 9,
-      "defensa": 5,
+      "fuerza": 13,
+      "defensa": 4,
       "velocidad": 9,
       "movimiento": 5,
       "inventario": [
@@ -50,39 +65,20 @@
       "arma_equipada": "Espada de Hierro"
     },
     {
-      "unit_id": "ZEPH_ALLY",
-      "nombre": "Zeph",
-      "x": 3,
-      "y": 11,
-      "bando": "aliado",
-      "hp_actual": 18,
-      "max_hp": 18,
-      "mp_actual": 45,
-      "max_mp": 45,
-      "nivel": 1,
-      "exp": 0,
-      "fuerza": 3,
-      "defensa": 1,
-      "velocidad": 8,
-      "movimiento": 4,
-      "inventario": [],
-      "arma_equipada": null
-    },
-    {
-      "unit_id": "THERON_ALLY",
-      "nombre": "Theron",
+      "unit_id": "ARCHER_ALLY",
+      "nombre": "Ryn",
       "x": 4,
-      "y": 9,
+      "y": 15,
       "bando": "aliado",
-      "hp_actual": 24,
-      "max_hp": 24,
-      "mp_actual": 12,
-      "max_mp": 12,
+      "hp_actual": 37,
+      "max_hp": 37,
+      "mp_actual": 25,
+      "max_mp": 25,
       "nivel": 1,
       "exp": 0,
-      "fuerza": 8,
-      "defensa": 3,
-      "velocidad": 12,
+      "fuerza": 11,
+      "defensa": 2,
+      "velocidad": 11,
       "movimiento": 5,
       "inventario": [
         {
@@ -91,6 +87,25 @@
         }
       ],
       "arma_equipada": "Arco de Hierro"
+    },
+    {
+      "unit_id": "ZEPH_ALLY",
+      "nombre": "Zeph",
+      "x": 3,
+      "y": 16,
+      "bando": "aliado",
+      "hp_actual": 33,
+      "max_hp": 33,
+      "mp_actual": 55,
+      "max_mp": 55,
+      "nivel": 1,
+      "exp": 0,
+      "fuerza": 7,
+      "defensa": 0,
+      "velocidad": 8,
+      "movimiento": 4,
+      "inventario": [],
+      "arma_equipada": null
     }
   ]
 }

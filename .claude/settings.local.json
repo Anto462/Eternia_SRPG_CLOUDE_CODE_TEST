@@ -12,7 +12,8 @@
       "Bash(for hero:*)",
       "Bash(do)",
       "Bash(mkdir -p \"$BASE/$hero/batlle&Ui\")",
-      "Bash(mkdir -p \"$BASE/$hero/map\")"
+      "Bash(mkdir -p \"$BASE/$hero/map\")",
+      "Bash(python3 -c \":*)"
     ]
   }
 }

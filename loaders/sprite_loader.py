@@ -23,16 +23,25 @@ _ROOT    = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _SPRITES = os.path.join(_ROOT, "assets", "sprites")
 
 # Tamaños display canónicos
-SIZE_UNIT_MAP     = (32, 32)
-SIZE_UNIT_BATTLE  = (96, 96)
-SIZE_PORTRAIT_HUD = (48, 48)
-SIZE_PORTRAIT_DLG = (96, 96)
-SIZE_TILE         = (32, 32)
-SIZE_ICON         = (16, 16)
-SIZE_FX           = (48, 48)
+SIZE_UNIT_MAP       = (32, 32)
+SIZE_UNIT_MAP_LARGE = (64, 64)   # Para unidades grandes (dragones, mamuts, etc.)
+SIZE_UNIT_BATTLE    = (96, 96)
+SIZE_PORTRAIT_HUD   = (48, 48)
+SIZE_PORTRAIT_DLG   = (96, 96)
+SIZE_TILE           = (32, 32)
+SIZE_ICON           = (16, 16)
+SIZE_FX             = (48, 48)
 
 # Tamaño original de cada frame en el pack (16×16 mini world sprites)
-FRAME_ORIGINAL = 16
+FRAME_ORIGINAL       = 16
+FRAME_ORIGINAL_LARGE = 32   # Sprites grandes: 32×32 px por frame
+
+# IDs de sprites cuyos frames son 32×32 y deben mostrarse a 64×64 en el mapa.
+# Se confirma por las dimensiones reales del PNG (128×256, 64×128, 96×128, 96×112).
+LARGE_SPRITE_IDS: set = {
+    "dragon", "black_dragon", "blue_dragon", "white_dragon", "yellow_dragon",
+    "mammoth", "yeti", "minotaur",
+}
 
 # Cache global: evita recargar el mismo archivo cada frame
 _cache: dict = {}
@@ -238,12 +247,14 @@ def _cached(key: str, builder):
     return _cache[key]
 
 
-def _load_sheet(rel_path: str) -> Optional[SpriteSheetLoader]:
+def _load_sheet(rel_path: str,
+               frame_w: int = FRAME_ORIGINAL,
+               frame_h: int = FRAME_ORIGINAL) -> Optional[SpriteSheetLoader]:
     full = os.path.join(_SPRITES, rel_path)
     if not os.path.exists(full):
         return None
     try:
-        return SpriteSheetLoader(full, FRAME_ORIGINAL, FRAME_ORIGINAL)
+        return SpriteSheetLoader(full, frame_w, frame_h)
     except Exception as e:
         print(f"[SpriteLoader] Error cargando sheet '{rel_path}': {e}")
         return None
@@ -398,9 +409,9 @@ def _fallback_icon(color: tuple) -> pygame.Surface:
 def get_unit_map_frames(sprite_id: str, bando: str = "aliado",
                         color_override=None) -> List[pygame.Surface]:
     """
-    Retorna lista de Surfaces 32×32 para la animación idle en el mapa.
-    - Si el spritesheet existe: extrae frames de la fila 0 (walk_down ≈ idle).
-    - Si no existe: retorna [fallback_surface].
+    Retorna lista de Surfaces para la animación idle en el mapa.
+    - Sprites normales  → frames 16×16, display 32×32.
+    - Sprites grandes   → frames 32×32, display 64×64 (dragones, mamuts, etc.)
     La lista tiene entre 1 y 4 frames para animación cíclica.
     """
     key = f"unit_frames_{bando}_{sprite_id}"
@@ -408,17 +419,31 @@ def get_unit_map_frames(sprite_id: str, bando: str = "aliado",
     def build():
         rel = UNIT_SPRITE_PATHS.get(sprite_id)
         if rel:
-            sheet = _load_sheet(rel)
+            is_large   = sprite_id in LARGE_SPRITE_IDS
+            fw = fh    = FRAME_ORIGINAL_LARGE if is_large else FRAME_ORIGINAL
+            display    = SIZE_UNIT_MAP_LARGE  if is_large else SIZE_UNIT_MAP
+            sheet = _load_sheet(rel, fw, fh)
             if sheet:
                 n = min(sheet.frames_in_row(), 4)
-                frames = sheet.get_animation(row=0, frame_count=n, scale_to=SIZE_UNIT_MAP)
+                frames = sheet.get_animation(row=0, frame_count=n, scale_to=display)
                 if frames:
                     return frames
 
         info = _get_fallback_info(sprite_id, bando, color_override)
+        # Fallback para sprites grandes: generar en tamaño 64×64
+        if sprite_id in LARGE_SPRITE_IDS:
+            s = pygame.Surface(SIZE_UNIT_MAP_LARGE, pygame.SRCALPHA)
+            small = _fallback_unit_map(info["color"], info["shape"])
+            s.blit(pygame.transform.scale(small, SIZE_UNIT_MAP_LARGE), (0, 0))
+            return [s]
         return [_fallback_unit_map(info["color"], info["shape"])]
 
     return _cached(key, build)
+
+
+def is_large_sprite(sprite_id: str) -> bool:
+    """Retorna True si el sprite es de tamaño grande (64×64 en el mapa)."""
+    return sprite_id in LARGE_SPRITE_IDS
 
 
 def get_unit_map_sprite(sprite_id: str, bando: str = "aliado",

@@ -55,6 +55,7 @@ class GameState:
         self._selected_heroes: list = []    # HeroOption elegidos
         self.relic_choices: list    = []    # 3 reliquias a mostrar
         self._relic_cursor    = 0
+        self._show_acquired_relics: bool = False  # toggle panel de items adquiridos
 
         self.estado_juego = "MENU_PRINCIPAL"
         if self.audio:
@@ -202,6 +203,7 @@ class GameState:
     def _open_relic_selection(self):
         self.relic_choices  = pick_relic_choices(self.rogue.acquired_relics)
         self._relic_cursor  = 0
+        self._show_acquired_relics = False
         self.estado_juego   = "MENU_MEJORAS"
         if self.audio:
             self.audio.play("menu_open")
@@ -209,6 +211,11 @@ class GameState:
     def _handle_relic_selection(self, key):
         if not self.relic_choices:
             self._do_advance()
+            return
+        # TAB o Q alternan el panel de items adquiridos
+        if key in [pygame.K_TAB, pygame.K_q]:
+            self._show_acquired_relics = not self._show_acquired_relics
+            if self.audio: self.audio.play("cursor_move")
             return
         if key == pygame.K_LEFT:
             self._relic_cursor = (self._relic_cursor - 1) % len(self.relic_choices)
@@ -239,13 +246,60 @@ class GameState:
         next_map         = pick_next_map(self.map_number, self.last_map_name)
         self._load_map(next_map)
 
+    def _save_hero_snapshots(self):
+        """Guarda stats actuales de los aliados vivos para persistirlos al siguiente mapa."""
+        self.rogue.hero_snapshots = {}
+        self.rogue.snapshot_relic_count = len(self.rogue.acquired_relics)
+        for u in self.unidades_vivas:
+            if u.bando != "aliado":
+                continue
+            uid = getattr(u, "unit_id", u.nombre)
+            self.rogue.hero_snapshots[uid] = {
+                "nivel":      u.nivel,
+                "exp":        u.exp,
+                "hp_actual":  u.hp_actual,
+                "max_hp":     u.max_hp,
+                "mp_actual":  u.mp_actual,
+                "max_mp":     u.max_mp,
+                # _level_gains separa lo ganado por level-up de los bonos de reliquias
+                "level_gains": dict(getattr(u, "_level_gains", {})),
+            }
+
     def advance_to_next_map(self):
-        """Registra puntos y abre menú de mejoras antes de cargar el siguiente mapa."""
+        """Registra puntos, guarda snapshots de héroes y abre menú de mejoras."""
         hp_total = sum(u.hp_actual for u in self.unidades_vivas if u.bando == "aliado")
         tier     = get_difficulty_tier(self.map_number)
         self.score.on_map_clear(hp_total, tier)
         self.score.save_if_highscore(self.modo_juego)
+        self._save_hero_snapshots()   # persistir niveles antes de descartar las unidades
         self._open_relic_selection()
+
+    @staticmethod
+    def _scale_enemy_for_map(unit, map_number: int):
+        """Escala las stats de un enemigo según el número de mapa (empieza en 0).
+        Cada mapa aumenta HP ~12%, FUE ~8%, DEF ~6%.
+        A partir del mapa 4 también se añade +1 VEL cada 2 mapas.
+        El primer mapa (map_number=0) no recibe escala.
+        """
+        n = max(0, map_number)
+        if n == 0:
+            return
+        hp_mult  = 1.0 + 0.12 * n
+        str_mult = 1.0 + 0.08 * n
+        def_mult = 1.0 + 0.06 * n
+
+        unit.max_hp  = max(1, round(unit.max_hp  * hp_mult))
+        unit.hp_actual = unit.max_hp
+        unit.fuerza  = max(1, round(unit.fuerza  * str_mult))
+        unit.defensa = max(0, round(unit.defensa * def_mult))
+
+        if n >= 4:
+            spd_bonus = (n - 2) // 2          # +1 cada 2 mapas desde el mapa 4
+            v = getattr(unit, "velocidad", 5)
+            unit.velocidad = max(1, v + spd_bonus)
+
+        # Nivel visual sube también para que el panel muestre un nivel coherente
+        unit.nivel = max(unit.nivel, 1 + n)
 
     def _load_map(self, map_def):
         self.fx.clear()
@@ -287,20 +341,48 @@ class GameState:
                 for sp in map_def.spawns
             ]
 
-        # Aplicar reliquias adquiridas a los aliados recién creados
+        # Restaurar niveles/stats o aplicar reliquias según corresponda
+        new_relics = self.rogue.acquired_relics[self.rogue.snapshot_relic_count:]
         for u in self.unidades:
-            if u.bando == "aliado" and self.rogue.acquired_relics:
-                self.rogue.apply_relics_to_unit(u)
+            if u.bando != "aliado":
+                continue
+            uid = getattr(u, "unit_id", u.nombre)
+            snap = self.rogue.hero_snapshots.get(uid)
+            if snap:
+                # Héroe vivo del mapa anterior: restaurar stats y aplicar solo reliquias nuevas
+                gains = snap.get("level_gains", {})
+                u.nivel     = snap["nivel"]
+                u.exp       = snap["exp"]
+                u.max_hp    = snap["max_hp"]
+                u.max_mp    = snap["max_mp"]
+                u.hp_actual = snap["hp_actual"]
+                u.mp_actual = snap["mp_actual"]
+                # Restaurar ganancias de level-up en stats que NO están en max_hp/max_mp
+                u.fuerza    = u.fuerza    + gains.get("fuerza",    0)
+                u.defensa   = u.defensa   + gains.get("defensa",   0)
+                u.velocidad = u.velocidad + gains.get("velocidad", 0)
+                u.habilidad = u.habilidad + gains.get("habilidad", 0)
+                u.suerte    = u.suerte    + gains.get("suerte",    0)
+                # Restaurar _level_gains para que futuros level-ups sigan acumulando
+                if hasattr(u, "_level_gains"):
+                    u._level_gains = dict(gains)
+                # Solo aplicar las reliquias adquiridas DESPUÉS de la última snapshot
+                for r in new_relics:
+                    self.rogue.apply_relic_to_unit_single(r, u)
+            else:
+                # Héroe nuevo (murió el mapa anterior) o primera partida: aplicar todas las reliquias
+                for r in self.rogue.acquired_relics:
+                    self.rogue.apply_relic_to_unit_single(r, u)
 
         # Enemigos aleatorios según dificultad
         tier = get_difficulty_tier(self.map_number)
         enemy_assignments = pick_enemies_for_difficulty(
             tier, list(map_def.enemy_positions), self.map_number)
         for unit_id, pos in enemy_assignments:
-            self.unidades.append(
-                make_unit(unit_id, pos[0], pos[1], "enemigo",
-                          add_floating_text=self.fx.add_text)
-            )
+            enemy = make_unit(unit_id, pos[0], pos[1], "enemigo",
+                              add_floating_text=self.fx.add_text)
+            self._scale_enemy_for_map(enemy, self.map_number)
+            self.unidades.append(enemy)
 
         self.idx_fase   = 0
         self.sel_unidad = None
@@ -361,7 +443,7 @@ class GameState:
     # ===================================================
     def check_end_conditions(self):
         if self.estado_juego in ["MENU_PRINCIPAL","MENU_CONTROLES","GAME_OVER","VICTORIA","PAUSA",
-                                  "MENU_SELECCION_GRUPO","MENU_MEJORAS"]:
+                                  "MENU_SELECCION_GRUPO","MENU_MEJORAS","MENU_PUNTAJES"]:
             return
         vivos    = self.unidades_vivas
         aliados  = [u for u in vivos if u.bando == "aliado"]
@@ -400,6 +482,14 @@ class GameState:
                 self.estado_juego = "MENU_CONTROLES"
             elif k == pygame.K_4 and has_save():
                 self.continue_saved_run()
+            elif k == pygame.K_5:
+                self.estado_juego = "MENU_PUNTAJES"
+            return
+
+        # --- PANTALLA DE PUNTAJES ---
+        if self.estado_juego == "MENU_PUNTAJES":
+            if k == pygame.K_ESCAPE:
+                self.estado_juego = "MENU_PRINCIPAL"
             return
 
         # --- SELECCIÓN DE GRUPO ---
@@ -850,4 +940,5 @@ class GameState:
             "relic_choices":   list(self.relic_choices),
             "relic_cursor":    self._relic_cursor,
             "rogue_relics":    list(self.rogue.acquired_relics),
+            "show_acquired_relics": self._show_acquired_relics,
         }

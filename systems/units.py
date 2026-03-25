@@ -103,6 +103,12 @@ class Unidad:
             "hp": 60, "fuerza": 50, "defensa": 30,
             "spd": 40, "skl": 35, "lck": 30,
         }
+        # Ganancias acumuladas por level-up (sin incluir bonos de reliquias).
+        # Permite restaurar correctamente el nivel al cambiar de mapa.
+        self._level_gains: dict = {
+            "max_hp": 0, "fuerza": 0, "defensa": 0,
+            "velocidad": 0, "habilidad": 0, "suerte": 0,
+        }
 
         # Inventario
         self.inventario    = inventario or []
@@ -324,17 +330,17 @@ class Unidad:
         mejoras = []
         c = self.crecimientos
         if random.randint(1, 100) <= c.get("hp", 60):
-            self.max_hp += 1; mejoras.append("HP")
+            self.max_hp += 1; self._level_gains["max_hp"] += 1; mejoras.append("HP")
         if random.randint(1, 100) <= c.get("fuerza", 50):
-            self.fuerza += 1; mejoras.append("STR")
+            self.fuerza += 1; self._level_gains["fuerza"] += 1; mejoras.append("STR")
         if random.randint(1, 100) <= c.get("defensa", 30):
-            self.defensa += 1; mejoras.append("DEF")
+            self.defensa += 1; self._level_gains["defensa"] += 1; mejoras.append("DEF")
         if random.randint(1, 100) <= c.get("spd", 40):
-            self.velocidad += 1; mejoras.append("SPD")
+            self.velocidad += 1; self._level_gains["velocidad"] += 1; mejoras.append("SPD")
         if random.randint(1, 100) <= c.get("skl", 35):
-            self.habilidad += 1; mejoras.append("SKL")
+            self.habilidad += 1; self._level_gains["habilidad"] += 1; mejoras.append("SKL")
         if random.randint(1, 100) <= c.get("lck", 30):
-            self.suerte += 1; mejoras.append("LCK")
+            self.suerte += 1; self._level_gains["suerte"] += 1; mejoras.append("LCK")
         if mejoras:
             self._fx(self.x * C.TAMANO_TILE, self.y * C.TAMANO_TILE - 40,
                      " ".join(mejoras), C.BLANCO, tamaño=12)

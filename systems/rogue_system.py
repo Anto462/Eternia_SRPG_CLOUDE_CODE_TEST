@@ -119,10 +119,40 @@ class RogueRunState:
     selected_heroes: List[str]          = field(default_factory=list)  # unit_ids
     acquired_relics: List[Relic]        = field(default_factory=list)
     score_multiplier: float             = 1.0
+    # Snapshot de stats de cada héroe vivo al terminar un mapa.
+    # key = unit_id, value = dict con stats + nivel + exp + _level_gains.
+    # Al crear nuevas unidades en _load_map se restauran estos valores y
+    # solo se aplican las reliquias adquiridas DESDE la última snapshot.
+    hero_snapshots: Dict[str, dict]     = field(default_factory=dict)
+    # Cuántas reliquias había cuando se guardó la última snapshot.
+    # Permite aplicar solo las reliquias nuevas al restaurar.
+    snapshot_relic_count: int           = 0
 
     def add_relic(self, relic: Relic):
         self.acquired_relics.append(relic)
         self.score_multiplier *= relic.score_mult
+
+    def apply_relic_to_unit_single(self, relic: "Relic", unit):
+        """Aplica el bonus de una sola reliquia a una unidad aliada."""
+        r = relic
+        if r.hp_bonus:
+            unit.max_hp    = max(1, unit.max_hp + r.hp_bonus)
+            unit.hp_actual = min(unit.hp_actual + r.hp_bonus, unit.max_hp)
+        if r.mp_bonus:
+            unit.max_mp    = max(0, unit.max_mp + r.mp_bonus)
+            unit.mp_actual = min(unit.mp_actual + r.mp_bonus, unit.max_mp)
+        if r.str_bonus:
+            unit.fuerza    = max(1, unit.fuerza  + r.str_bonus)
+        if r.def_bonus:
+            unit.defensa   = max(0, unit.defensa  + r.def_bonus)
+        if r.spd_bonus:
+            v = getattr(unit, "velocidad", 5)
+            unit.velocidad = max(1, v + r.spd_bonus)
+        if r.mov_bonus:
+            unit.movimiento = max(1, unit.movimiento + r.mov_bonus)
+        if r.crit_boost:
+            current = getattr(unit, "crit_bonus_global", 0)
+            unit.crit_bonus_global = current + r.crit_boost
 
     def apply_relics_to_unit(self, unit):
         """Aplica todos los bonus de reliquias a una unidad aliada."""
