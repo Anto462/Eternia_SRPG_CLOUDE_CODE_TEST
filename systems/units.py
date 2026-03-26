@@ -71,6 +71,7 @@ class Unidad:
         movimiento, max_hp, max_mp,
         fuerza, defensa, mag=0, velocidad=5, habilidad=4, suerte=3,
         inventario=None, habilidades=None,
+        skill_progression=None,
         es_heroe=False, awakening_type=None,
         add_floating_text=None, unit_id=None,
         sprite_id=None, color_base=None,
@@ -119,6 +120,10 @@ class Unidad:
                 break
 
         self.habilidades = habilidades or []
+        # dict: nivel (int) → skill_id (str) — habilidades aprendidas por subida de nivel
+        self._skill_progression: dict = {
+            int(k): v for k, v in (skill_progression or {}).items()
+        }
 
         # Estado de turno
         self.ha_actuado = False
@@ -321,6 +326,25 @@ class Unidad:
             self.exp -= 100
             self.subir_nivel()
 
+    def apply_skill_progression(self, max_nivel: int):
+        """Otorga todas las habilidades de progresión hasta max_nivel.
+        Es idempotente: no duplica habilidades ya presentes.
+        Llamar tras restaurar nivel desde snapshot o al subir nivel."""
+        ids_actuales = {getattr(h, "id", None) for h in self.habilidades}
+        for nivel_req in sorted(self._skill_progression.keys()):
+            if nivel_req > max_nivel:
+                break
+            skill_id = self._skill_progression[nivel_req]
+            if skill_id not in ids_actuales:
+                nueva = make_skill(skill_id)
+                if nueva:
+                    self.habilidades.append(nueva)
+                    ids_actuales.add(skill_id)
+                    self._fx(
+                        self.x * C.TAMANO_TILE, self.y * C.TAMANO_TILE - 36,
+                        f"+ {nueva.nombre}", C.AMARILLO_AWK, tamaño=14,
+                    )
+
     def subir_nivel(self):
         self.nivel += 1
         self._fx(self.x * C.TAMANO_TILE, self.y * C.TAMANO_TILE - 20, "LEVEL UP!", C.AMARILLO_AWK, tamaño=22)
@@ -344,6 +368,9 @@ class Unidad:
         if mejoras:
             self._fx(self.x * C.TAMANO_TILE, self.y * C.TAMANO_TILE - 40,
                      " ".join(mejoras), C.BLANCO, tamaño=12)
+
+        # Desbloquear habilidades de progresión para el nuevo nivel
+        self.apply_skill_progression(self.nivel)
 
     # -------------------------
     # Render (sprite o fallback)
@@ -438,6 +465,7 @@ def make_unit(unit_id: str, x: int, y: int, bando: str,
     d = UNIT_CATALOG[unit_id]
     inv    = [make_item(i)  for i in d.get("items",  [])]
     skills = [make_skill(s) for s in d.get("skills", [])]
+    skill_prog = d.get("skill_progression", {})
 
     crec_raw = d.get("crecimientos", {})
     crec = {
@@ -463,9 +491,10 @@ def make_unit(unit_id: str, x: int, y: int, bando: str,
         velocidad    = d.get("spd", 5),
         habilidad    = d.get("skl", 4),
         suerte       = d.get("lck", 3),
-        inventario   = inv,
-        habilidades  = skills,
-        es_heroe     = d.get("is_hero", False),
+        inventario         = inv,
+        habilidades        = skills,
+        skill_progression  = skill_prog,
+        es_heroe           = d.get("is_hero", False),
         awakening_type = d.get("awakening_type"),
         add_floating_text = add_floating_text,
         unit_id      = unit_id,

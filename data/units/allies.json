@@ -14,6 +14,11 @@
     "crecimientos": {"hp": 70, "str": 55, "def": 40, "spd": 50, "skl": 45, "lck": 40},
     "items": ["SWORD_IRON", "POTION"],
     "skills": ["FEROCIOUS_STRIKE"],
+    "skill_progression": {
+      "4": "BATTLE_CRY",
+      "7": "HOLY_STRIKE",
+      "10": "DOUBLE_CUT"
+    },
     "is_hero": true,
     "awakening_type": "PALADIN",
     "sprite": "kael",
@@ -35,6 +40,10 @@
     "crecimientos": {"hp": 50, "str": 25, "def": 20, "spd": 45, "skl": 35, "lck": 60},
     "items": [],
     "skills": ["HEAL"],
+    "skill_progression": {
+      "4": "RALLY",
+      "8": "DIVINE_LIGHT"
+    },
     "is_hero": false,
     "awakening_type": "CLERIC",
     "sprite": "lyra",
@@ -56,6 +65,10 @@
     "crecimientos": {"hp": 55, "str": 50, "def": 30, "spd": 60, "skl": 65, "lck": 45},
     "items": ["BOW_IRON"],
     "skills": ["PIERCING_SHOT"],
+    "skill_progression": {
+      "5": "VENOM_SHOT",
+      "9": "THUNDER_BOLT"
+    },
     "is_hero": false,
     "awakening_type": "ARCHER",
     "sprite": "ryn",
@@ -77,6 +90,10 @@
     "crecimientos": {"hp": 55, "str": 55, "def": 25, "spd": 65, "skl": 70, "lck": 40},
     "items": ["BOW_IRON"],
     "skills": ["PIERCING_SHOT"],
+    "skill_progression": {
+      "5": "VENOM_SHOT",
+      "9": "DOUBLE_CUT"
+    },
     "is_hero": false,
     "awakening_type": "ARCHER",
     "sprite": "theron",
@@ -98,6 +115,10 @@
     "crecimientos": {"hp": 45, "str": 50, "def": 15, "spd": 80, "skl": 75, "lck": 55},
     "items": ["SWORD_IRON"],
     "skills": ["FEROCIOUS_STRIKE"],
+    "skill_progression": {
+      "4": "VENOM_STRIKE",
+      "8": "SHADOW_BLADE"
+    },
     "is_hero": true,
     "awakening_type": "PALADIN",
     "sprite": "mira",
@@ -119,6 +140,11 @@
     "crecimientos": {"hp": 40, "str": 15, "def": 10, "spd": 40, "skl": 35, "lck": 50},
     "items": [],
     "skills": ["HEAL"],
+    "skill_progression": {
+      "4": "DARK_BOLT",
+      "7": "FIRE_BLAST",
+      "10": "DRAIN_FORCE"
+    },
     "is_hero": false,
     "awakening_type": "CLERIC",
     "sprite": "zeph",
@@ -140,6 +166,10 @@
     "crecimientos": {"hp": 65, "str": 60, "def": 45, "spd": 45, "skl": 40, "lck": 35},
     "items": ["SWORD_IRON"],
     "skills": ["FEROCIOUS_STRIKE"],
+    "skill_progression": {
+      "4": "BATTLE_CRY",
+      "7": "DOUBLE_CUT"
+    },
     "is_hero": true,
     "awakening_type": "PALADIN",
     "sprite": "aldric",

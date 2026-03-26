@@ -43,6 +43,105 @@
     "poder": 0,
     "tipo_efecto": "buff",
     "efecto_estado": "bendecido",
+    "efecto_prob": 100,
     "icono": "skill_rally"
+  },
+  "VENOM_STRIKE": {
+    "nombre": "Golpe Venenoso",
+    "costo_mp": 7,
+    "rango": [1, 1],
+    "poder": 7,
+    "tipo_efecto": "daño",
+    "efecto_estado": "veneno",
+    "efecto_prob": 80,
+    "icono": "skill_strike"
+  },
+  "VENOM_SHOT": {
+    "nombre": "Flecha Venenosa",
+    "costo_mp": 8,
+    "rango": [2, 4],
+    "poder": 6,
+    "tipo_efecto": "daño",
+    "efecto_estado": "veneno",
+    "efecto_prob": 60,
+    "icono": "skill_piercing"
+  },
+  "FIRE_BLAST": {
+    "nombre": "Explosión de Fuego",
+    "costo_mp": 14,
+    "rango": [1, 2],
+    "poder": 16,
+    "tipo_efecto": "daño",
+    "efecto_estado": "quemado",
+    "efecto_prob": 50,
+    "icono": "skill_dark_bolt"
+  },
+  "THUNDER_BOLT": {
+    "nombre": "Rayo Aturdidor",
+    "costo_mp": 12,
+    "rango": [1, 3],
+    "poder": 11,
+    "tipo_efecto": "daño",
+    "efecto_estado": "aturdido",
+    "efecto_prob": 35,
+    "icono": "skill_dark_bolt"
+  },
+  "BATTLE_CRY": {
+    "nombre": "Grito de Guerra",
+    "costo_mp": 10,
+    "rango": [1, 2],
+    "poder": 0,
+    "tipo_efecto": "buff",
+    "efecto_estado": "fortalecido",
+    "efecto_prob": 100,
+    "icono": "skill_rally"
+  },
+  "DIVINE_LIGHT": {
+    "nombre": "Luz Divina",
+    "costo_mp": 14,
+    "rango": [1, 3],
+    "poder": 26,
+    "tipo_efecto": "curar",
+    "efecto_estado": null,
+    "icono": "skill_heal"
+  },
+  "SHADOW_BLADE": {
+    "nombre": "Hoja Sombría",
+    "costo_mp": 9,
+    "rango": [1, 1],
+    "poder": 12,
+    "tipo_efecto": "daño",
+    "efecto_estado": "robo_str",
+    "efecto_prob": 45,
+    "icono": "skill_strike"
+  },
+  "DRAIN_FORCE": {
+    "nombre": "Drenar Fuerza",
+    "costo_mp": 13,
+    "rango": [1, 3],
+    "poder": 8,
+    "tipo_efecto": "daño",
+    "efecto_estado": "robo_str",
+    "efecto_prob": 70,
+    "icono": "skill_dark_bolt"
+  },
+  "DOUBLE_CUT": {
+    "nombre": "Tajo Doble",
+    "costo_mp": 11,
+    "rango": [1, 1],
+    "poder": 18,
+    "tipo_efecto": "daño",
+    "efecto_estado": null,
+    "icono": "skill_strike"
+  },
+  "HOLY_STRIKE": {
+    "nombre": "Golpe Sagrado",
+    "costo_mp": 10,
+    "rango": [1, 1],
+    "poder": 13,
+    "tipo_efecto": "daño",
+    "efecto_estado": "aturdido",
+    "efecto_prob": 30,
+    "icono": "skill_strike"
   }
 }

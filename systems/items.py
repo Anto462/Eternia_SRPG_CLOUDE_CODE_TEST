@@ -25,6 +25,7 @@ class Item:
         self.critico_bonus  = critico_bonus
         self.cura_estado    = cura_estado   # cura este estado si es consumible
         self.icono          = icono or nombre.lower().replace(" ", "_")
+        self.item_id: str   = ""            # clave del catálogo; la estampa make_item()
 
     def __repr__(self):
         return f"<Item {self.nombre} [{self.tipo}]>"
@@ -41,6 +42,7 @@ class Habilidad:
         self.efecto_estado = efecto_estado  # nombre del estado que puede aplicar
         self.efecto_prob   = efecto_prob    # % de probabilidad de aplicar estado
         self.icono         = icono or nombre.lower().replace(" ", "_")
+        self.id: str       = ""             # clave del catálogo; la estampa make_skill()
 
     def __repr__(self):
         return f"<Habilidad {self.nombre} [{self.tipo_efecto}]>"
@@ -102,7 +104,7 @@ def make_item(item_id: str) -> Item:
     if item_id not in ITEM_CATALOG:
         raise ValueError(f"[items] Item ID inválido: '{item_id}'. Disponibles: {list(ITEM_CATALOG.keys())}")
     d = ITEM_CATALOG[item_id]
-    return Item(
+    it = Item(
         nombre          = d["nombre"],
         tipo            = d["tipo"],
         tipo_arma       = d.get("tipo_arma"),
@@ -114,13 +116,16 @@ def make_item(item_id: str) -> Item:
         cura_estado     = d.get("cura_estado"),
         icono           = d.get("icono"),
     )
+    # Estampar la clave del catálogo para poder serializar el inventario entre mapas
+    it.item_id = item_id
+    return it
 
 
 def make_skill(skill_id: str) -> Habilidad:
     if skill_id not in SKILL_CATALOG:
         raise ValueError(f"[items] Skill ID inválido: '{skill_id}'. Disponibles: {list(SKILL_CATALOG.keys())}")
     d = SKILL_CATALOG[skill_id]
-    return Habilidad(
+    sk = Habilidad(
         nombre        = d["nombre"],
         costo_mp      = d["costo_mp"],
         rango         = d["rango"],
@@ -130,3 +135,6 @@ def make_skill(skill_id: str) -> Habilidad:
         efecto_prob   = d.get("efecto_prob", 0),
         icono         = d.get("icono"),
     )
+    # Estampar ID para que apply_skill_progression pueda detectar duplicados
+    sk.id = skill_id
+    return sk

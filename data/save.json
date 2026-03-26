@@ -1,11 +1,11 @@
 {
-  "map_number": 6,
-  "last_map_name": "Fortaleza de la Montaña",
+  "map_number": 1,
+  "last_map_name": "Greenfield",
   "modo_juego": "PVE",
   "score": {
-    "total": 8762,
-    "kills": 14,
-    "maps_cleared": 6
+    "total": 683,
+    "kills": 0,
+    "maps_cleared": 1
   },
   "rogue": {
     "selected_heroes": [
@@ -14,21 +14,6 @@
       "ZEPH_ALLY"
     ],
     "acquired_relics": [
-      {
-        "relic_id": "corazon_piedra"
-      },
-      {
-        "relic_id": "sigilo_elfico"
-      },
-      {
-        "relic_id": "filo_caos"
-      },
-      {
-        "relic_id": "phylactery"
-      },
-      {
-        "relic_id": "orbe_magia"
-      },
       {
         "relic_id": "ojo_critico"
       }
@@ -39,70 +24,74 @@
     {
       "unit_id": "HERO_ALLY",
       "nombre": "Kael",
-      "x": 3,
-      "y": 14,
+      "x": 5,
+      "y": 5,
       "bando": "aliado",
-      "hp_actual": 47,
-      "max_hp": 47,
-      "mp_actual": 30,
-      "max_mp": 30,
-      "nivel": 1,
-      "exp": 0,
-      "fuerza": 13,
-      "defensa": 4,
-      "velocidad": 9,
+      "hp_actual": 32,
+      "max_hp": 32,
+      "mp_actual": 15,
+      "max_mp": 20,
+      "nivel": 2,
+      "exp": 70,
+      "fuerza": 9,
+      "defensa": 5,
+      "velocidad": 8,
       "movimiento": 5,
       "inventario": [
         {
           "nombre": "Espada de Hierro",
-          "item_id": "Espada de Hierro"
+          "item_id": "SWORD_IRON"
         },
         {
           "nombre": "Poción",
-          "item_id": "Poción"
+          "item_id": "POTION"
         }
       ],
-      "arma_equipada": "Espada de Hierro"
+      "arma_equipada": "SWORD_IRON"
     },
     {
       "unit_id": "ARCHER_ALLY",
       "nombre": "Ryn",
       "x": 4,
-      "y": 15,
+      "y": 7,
       "bando": "aliado",
-      "hp_actual": 37,
-      "max_hp": 37,
-      "mp_actual": 25,
-      "max_mp": 25,
+      "hp_actual": 22,
+      "max_hp": 22,
+      "mp_actual": 15,
+      "max_mp": 15,
       "nivel": 1,
-      "exp": 0,
-      "fuerza": 11,
-      "defensa": 2,
-      "velocidad": 11,
+      "exp": 15,
+      "fuerza": 7,
+      "defensa": 3,
+      "velocidad": 9,
       "movimiento": 5,
       "inventario": [
         {
           "nombre": "Arco de Hierro",
-          "item_id": "Arco de Hierro"
+          "item_id": "BOW_IRON"
+        },
+        {
+          "nombre": "Antídoto",
+          "item_id": "ANTIDOTE"
         }
       ],
-      "arma_equipada": "Arco de Hierro"
+      "arma_equipada": "BOW_IRON"
     },
     {
       "unit_id": "ZEPH_ALLY",
       "nombre": "Zeph",
-      "x": 3,
-      "y": 16,
+      "x": 5,
+      "y": 7,
       "bando": "aliado",
-      "hp_actual": 33,
-      "max_hp": 33,
-      "mp_actual": 55,
-      "max_mp": 55,
+      "hp_actual": 7,
+      "max_hp": 18,
+      "mp_actual": 37,
+      "max_mp": 45,
       "nivel": 1,
-      "exp": 0,
-      "fuerza": 7,
-      "defensa": 0,
-      "velocidad": 8,
+      "exp": 25,
+      "fuerza": 3,
+      "defensa": 1,
+      "velocidad": 6,
       "movimiento": 4,
       "inventario": [],
       "arma_equipada": null

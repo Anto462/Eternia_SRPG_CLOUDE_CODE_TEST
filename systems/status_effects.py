@@ -63,6 +63,12 @@ EFFECT_DEFS = {
         "duracion": 2,
         "str_mod":  -2,
     },
+    "fortalecido": {
+        "etiqueta": "Fortalecido",
+        "color":    (255, 180, 50),
+        "duracion": 3,
+        "str_mod":  3,
+    },
 }
 
 

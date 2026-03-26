@@ -14,7 +14,7 @@ import constants as C
 from systems.map_data      import (pick_random_map, pick_next_map,
                                     pick_enemies_for_difficulty, get_difficulty_tier,
                                     MAPS)
-from systems.items         import make_item
+from systems.items         import make_item, make_skill
 from systems.units         import make_unit
 from systems.dialogue_system import DialogueSystem
 from core.pathfinding      import obtener_movimientos_validos, get_terrain_esquive
@@ -254,15 +254,23 @@ class GameState:
             if u.bando != "aliado":
                 continue
             uid = getattr(u, "unit_id", u.nombre)
+            # Serializar inventario como lista de item_ids del catálogo.
+            # Se excluyen ítems sin ID (no deberían existir en condiciones normales).
+            inv_ids = [
+                it.item_id for it in u.inventario
+                if getattr(it, "item_id", "")
+            ]
+            equipped_id = getattr(getattr(u, "arma_equipada", None), "item_id", None)
             self.rogue.hero_snapshots[uid] = {
-                "nivel":      u.nivel,
-                "exp":        u.exp,
-                "hp_actual":  u.hp_actual,
-                "max_hp":     u.max_hp,
-                "mp_actual":  u.mp_actual,
-                "max_mp":     u.max_mp,
-                # _level_gains separa lo ganado por level-up de los bonos de reliquias
-                "level_gains": dict(getattr(u, "_level_gains", {})),
+                "nivel":           u.nivel,
+                "exp":             u.exp,
+                "hp_actual":       u.hp_actual,
+                "max_hp":          u.max_hp,
+                "mp_actual":       u.mp_actual,
+                "max_mp":          u.max_mp,
+                "level_gains":     dict(getattr(u, "_level_gains", {})),
+                "inventario":      inv_ids,
+                "arma_equipada_id": equipped_id,
             }
 
     def advance_to_next_map(self):
@@ -276,30 +284,67 @@ class GameState:
 
     @staticmethod
     def _scale_enemy_for_map(unit, map_number: int):
-        """Escala las stats de un enemigo según el número de mapa (empieza en 0).
-        Cada mapa aumenta HP ~12%, FUE ~8%, DEF ~6%.
-        A partir del mapa 4 también se añade +1 VEL cada 2 mapas.
-        El primer mapa (map_number=0) no recibe escala.
+        """Escala stats y habilidades del enemigo según el número de mapa (empieza en 0).
+        Stats: HP +12%/mapa, STR +8%/mapa, DEF +6%/mapa. SPD +1 cada 2 mapas desde mapa 4.
+        Skills: mapa 2 → skill básico si no tiene ninguno;
+                mapa 4 → skill ofensivo según tipo (físico/mágico);
+                mapa 6 → skill avanzado adicional.
         """
         n = max(0, map_number)
         if n == 0:
             return
+
+        # ── Stats ──────────────────────────────────────────────────────────
         hp_mult  = 1.0 + 0.12 * n
         str_mult = 1.0 + 0.08 * n
         def_mult = 1.0 + 0.06 * n
 
-        unit.max_hp  = max(1, round(unit.max_hp  * hp_mult))
+        unit.max_hp    = max(1, round(unit.max_hp  * hp_mult))
         unit.hp_actual = unit.max_hp
-        unit.fuerza  = max(1, round(unit.fuerza  * str_mult))
-        unit.defensa = max(0, round(unit.defensa * def_mult))
+        unit.fuerza    = max(1, round(unit.fuerza  * str_mult))
+        unit.defensa   = max(0, round(unit.defensa * def_mult))
 
         if n >= 4:
-            spd_bonus = (n - 2) // 2          # +1 cada 2 mapas desde el mapa 4
-            v = getattr(unit, "velocidad", 5)
-            unit.velocidad = max(1, v + spd_bonus)
+            spd_bonus  = (n - 2) // 2
+            unit.velocidad = max(1, getattr(unit, "velocidad", 5) + spd_bonus)
 
-        # Nivel visual sube también para que el panel muestre un nivel coherente
+        # Nivel visual coherente con el progreso
         unit.nivel = max(unit.nivel, 1 + n)
+
+        # ── Habilidades ────────────────────────────────────────────────────
+        # Determinar tipo dominante del enemigo
+        is_magic = getattr(unit, "magia", 0) >= getattr(unit, "fuerza", 1)
+        existing_ids = {getattr(h, "id", None) for h in getattr(unit, "habilidades", [])}
+
+        def _grant(skill_id: str):
+            """Añade una skill al enemigo si no la tiene ya."""
+            if skill_id not in existing_ids:
+                sk = make_skill(skill_id)
+                if sk:
+                    unit.habilidades.append(sk)
+                    existing_ids.add(skill_id)
+
+        # Mapa 2+: si no tiene ninguna habilidad, darle la básica según tipo
+        if n >= 2 and not existing_ids - {None}:
+            _grant("DARK_BOLT" if is_magic else "FEROCIOUS_STRIKE")
+
+        # Mapa 4+: habilidad ofensiva con efecto de estado
+        if n >= 4:
+            if is_magic:
+                _grant("THUNDER_BOLT")   # magia + aturdido
+            else:
+                _grant("VENOM_STRIKE")   # físico + veneno
+
+        # Mapa 6+: habilidad avanzada (drenar / tajo doble)
+        if n >= 6:
+            if is_magic:
+                _grant("DRAIN_FORCE")    # drenar fuerza
+            else:
+                _grant("DOUBLE_CUT")     # máximo daño físico
+
+        # Mapa 8+: todos los enemigos añaden habilidad de fuego/sombra
+        if n >= 8:
+            _grant("FIRE_BLAST" if is_magic else "SHADOW_BLADE")
 
     def _load_map(self, map_def):
         self.fx.clear()
@@ -369,6 +414,28 @@ class GameState:
                 # Solo aplicar las reliquias adquiridas DESPUÉS de la última snapshot
                 for r in new_relics:
                     self.rogue.apply_relic_to_unit_single(r, u)
+                # Restaurar habilidades de progresión (silencioso — sin floating text)
+                if hasattr(u, "apply_skill_progression"):
+                    u.apply_skill_progression(u.nivel)
+                # Restaurar inventario acumulado durante la run
+                saved_inv = snap.get("inventario", [])
+                if saved_inv:
+                    u.inventario = []
+                    u.arma_equipada = None
+                    for iid in saved_inv:
+                        try:
+                            u.inventario.append(make_item(iid))
+                        except ValueError:
+                            pass  # ítem obsoleto — ignorar silenciosamente
+                    # Reequipar el arma guardada, o la primera arma disponible
+                    equipped_id = snap.get("arma_equipada_id")
+                    for it in u.inventario:
+                        if it.tipo == "arma":
+                            if u.arma_equipada is None:
+                                u.arma_equipada = it   # fallback: primera arma
+                            if it.item_id == equipped_id:
+                                u.arma_equipada = it
+                                break
             else:
                 # Héroe nuevo (murió el mapa anterior) o primera partida: aplicar todas las reliquias
                 for r in self.rogue.acquired_relics:
