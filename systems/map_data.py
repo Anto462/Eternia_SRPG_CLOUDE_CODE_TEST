@@ -97,6 +97,7 @@ class MapDef:
     enemy_positions: List[Coord]         # posiciones para enemigos aleatorios
     items_spawn: Dict[Coord, str]
     rules:       Dict[str, object]
+    weather:     "str | None" = None     # clima estético del mapa (ver ui/weather.py)
 
 
 # =================================================
@@ -480,7 +481,8 @@ def _json_to_mapdef(d: dict) -> "MapDef | None":
 
         mdef = MapDef(name=name, grid=grid, thrones=thrones,
                       spawns=spawns, enemy_positions=enemy_positions,
-                      items_spawn=items_spawn, rules=rules)
+                      items_spawn=items_spawn, rules=rules,
+                      weather=d.get("weather", None))
         _validate_grid(grid, name)
         _validate_positions(mdef)
         return mdef

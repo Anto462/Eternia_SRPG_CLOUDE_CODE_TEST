@@ -1,21 +1,24 @@
 {
-  "map_number": 1,
-  "last_map_name": "Greenfield",
+  "map_number": 2,
+  "last_map_name": "Asedio a la Fortaleza",
   "modo_juego": "PVE",
   "score": {
-    "total": 683,
-    "kills": 0,
-    "maps_cleared": 1
+    "total": 1636,
+    "kills": 3,
+    "maps_cleared": 2
   },
   "rogue": {
     "selected_heroes": [
       "HERO_ALLY",
-      "ARCHER_ALLY",
-      "ZEPH_ALLY"
+      "CLERIC_ALLY",
+      "MIRA_ALLY"
     ],
     "acquired_relics": [
       {
-        "relic_id": "ojo_critico"
+        "relic_id": "sigilo_elfico"
+      },
+      {
+        "relic_id": "caliz_guerra"
       }
     ],
     "score_multiplier": 1.0
@@ -24,17 +27,17 @@
     {
       "unit_id": "HERO_ALLY",
       "nombre": "Kael",
-      "x": 5,
-      "y": 5,
+      "x": 3,
+      "y": 15,
       "bando": "aliado",
-      "hp_actual": 32,
+      "hp_actual": 20,
       "max_hp": 32,
-      "mp_actual": 15,
+      "mp_actual": 10,
       "max_mp": 20,
       "nivel": 2,
-      "exp": 70,
-      "fuerza": 9,
-      "defensa": 5,
+      "exp": 60,
+      "fuerza": 11,
+      "defensa": 7,
       "velocidad": 8,
       "movimiento": 5,
       "inventario": [
@@ -50,51 +53,52 @@
       "arma_equipada": "SWORD_IRON"
     },
     {
-      "unit_id": "ARCHER_ALLY",
-      "nombre": "Ryn",
+      "unit_id": "CLERIC_ALLY",
+      "nombre": "Lyra",
       "x": 4,
-      "y": 7,
+      "y": 16,
       "bando": "aliado",
-      "hp_actual": 22,
-      "max_hp": 22,
-      "mp_actual": 15,
-      "max_mp": 15,
+      "hp_actual": 20,
+      "max_hp": 20,
+      "mp_actual": 19,
+      "max_mp": 35,
       "nivel": 1,
-      "exp": 15,
-      "fuerza": 7,
-      "defensa": 3,
-      "velocidad": 9,
-      "movimiento": 5,
+      "exp": 50,
+      "fuerza": 6,
+      "defensa": 4,
+      "velocidad": 5,
+      "movimiento": 4,
       "inventario": [
         {
-          "nombre": "Arco de Hierro",
-          "item_id": "BOW_IRON"
-        },
-        {
-          "nombre": "Antídoto",
-          "item_id": "ANTIDOTE"
+          "nombre": "Espada de Acero",
+          "item_id": "SWORD_STEEL"
         }
       ],
-      "arma_equipada": "BOW_IRON"
+      "arma_equipada": "SWORD_STEEL"
     },
     {
-      "unit_id": "ZEPH_ALLY",
-      "nombre": "Zeph",
-      "x": 5,
-      "y": 7,
+      "unit_id": "MIRA_ALLY",
+      "nombre": "Mira",
+      "x": 2,
+      "y": 14,
       "bando": "aliado",
-      "hp_actual": 7,
-      "max_hp": 18,
-      "mp_actual": 37,
-      "max_mp": 45,
+      "hp_actual": 20,
+      "max_hp": 20,
+      "mp_actual": 18,
+      "max_mp": 18,
       "nivel": 1,
-      "exp": 25,
-      "fuerza": 3,
-      "defensa": 1,
-      "velocidad": 6,
-      "movimiento": 4,
-      "inventario": [],
-      "arma_equipada": null
+      "exp": 95,
+      "fuerza": 10,
+      "defensa": 4,
+      "velocidad": 13,
+      "movimiento": 6,
+      "inventario": [
+        {
+          "nombre": "Espada de Hierro",
+          "item_id": "SWORD_IRON"
+        }
+      ],
+      "arma_equipada": "SWORD_IRON"
     }
   ]
 }

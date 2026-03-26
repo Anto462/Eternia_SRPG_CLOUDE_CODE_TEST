@@ -37,15 +37,31 @@ DORADO_COFRE = (255, 215, 0)
 
 PURPURA_TRONO = (148, 0, 211)  # Trono
 
-# UI Persona-style (combat menus)
-PERSONA_BLACK  = (8,   8,  14)   # Fondo de panel casi negro
-PERSONA_RED    = (210, 18,  18)  # Acento rojo principal
-PERSONA_WHITE  = (245, 245, 250) # Texto principal
-PERSONA_GOLD   = (255, 210,  40) # Acento dorado (Awakening / highlight)
-PERSONA_PANEL  = (12,  12,  22)  # Fondo de panel oscuro
-PERSONA_STRIP  = (180, 15,  15)  # Franja lateral de menú activo
-PERSONA_ALLY   = (30,  90, 200)  # Azul bando aliado
-PERSONA_ENEMY  = (200, 25,  25)  # Rojo bando enemigo
+# UI Persona 5-style (combat menus — kept for legacy / P5 sections)
+PERSONA_BLACK  = (8,   8,  14)
+PERSONA_RED    = (210, 18,  18)
+PERSONA_WHITE  = (245, 245, 250)
+PERSONA_GOLD   = (255, 210,  40)
+PERSONA_PANEL  = (12,  12,  22)
+PERSONA_STRIP  = (180, 15,  15)
+PERSONA_ALLY   = (30,  90, 200)
+PERSONA_ENEMY  = (200, 25,  25)
+
+# UI Persona 3 Reload-style palette
+P3R_NAVY       = (6,   13,  26)   # fondo principal profundo
+P3R_PANEL      = (10,  20,  40)   # paneles semitransparentes
+P3R_BLUE_MID   = (20,  60, 120)   # azul medio para gradientes
+P3R_TEAL       = (0,  200, 212)   # acento cian/teal principal
+P3R_TEAL_DIM   = (0,  100, 120)   # teal apagado para bordes y separadores
+P3R_DARK_TEAL  = (0,   40,  55)   # teal muy oscuro para fondos de separador
+P3R_WHITE      = (220, 235, 255)  # texto (blanco frío)
+P3R_GOLD       = (255, 210,  80)  # dorado para críticos / highlights
+P3R_ALLY       = (40,  110, 230)  # azul eléctrico bando aliado
+P3R_ENEMY      = (180,  40,  60)  # rojo oscuro bando enemigo
+P3R_HP_HIGH    = (60,  220, 180)  # barra HP alta (verde-teal)
+P3R_HP_MID     = (220, 180,  40)  # barra HP media (dorado)
+P3R_HP_LOW     = (220,  60,  60)  # barra HP baja (rojo)
+P3R_MP_BAR     = (60,  140, 255)  # barra MP (azul eléctrico)
 
 # Sprites / Animación
 TILE_ORIGINAL_SIZE = 16   # tamaño original de cada frame en el pack (16×16 mini world)

@@ -5,6 +5,7 @@
 # Incluye: log de combate, battle preview, panel mejorado,
 #          íconos de efectos de estado, minimapa.
 
+import math
 import pygame
 import constants as C
 from loaders.sprite_loader import (
@@ -12,6 +13,7 @@ from loaders.sprite_loader import (
     get_unit_map_frames, get_ui_sprite, is_large_sprite,
 )
 from ui.battle_preview import draw_battle_preview
+from ui.weather import WeatherSystem
 from systems.rogue_system import MIN_HEROES, MAX_HEROES
 
 
@@ -59,11 +61,18 @@ class UIRenderer:
         self._cursor_spr = get_ui_sprite("BoxSelector", 0, 0, 16, 16, scale_to=(32, 32))
 
         # Animaciones de UI en combate
-        # Cada key es un nombre de widget; valor = ms en que apareció por primera vez.
         self._ui_anim_start: dict = {}
-        self._ui_anim_duration = 160     # ms para slide-in completo
-        self._prev_banner_text: str = "" # detecta cambio de turno para reiniciar anim
-        self._prev_action_unit_id: "int | None" = None  # detecta cambio de unidad para reiniciar anim
+        self._ui_anim_duration = 160
+        self._prev_banner_text: str = ""
+        self._prev_action_unit_id: "int | None" = None
+
+        # Sistema de clima estético
+        self._weather = WeatherSystem()
+        self._current_weather: "str | None" = None
+
+        # Typewriter para banner P3R
+        self._banner_chars_shown: int = 0
+        self._banner_char_timer:  int = 0
 
     # -------------------------
     # Log de combate
@@ -172,64 +181,156 @@ class UIRenderer:
         s = font.render(text, True, color)
         surf.blit(s, s.get_rect(center=(cx, cy)))
 
+    # ─── Helpers P3R ──────────────────────────────────────────────────────────
+
+    def _draw_hex_pattern(self, surf, alpha=18):
+        """Patrón de hexágonos tenues al fondo — sello visual de P3R."""
+        W, H = C.ANCHO_PANTALLA, C.ALTO_PANTALLA
+        pat = pygame.Surface((W, H), pygame.SRCALPHA)
+        size = 28          # radio del hexágono
+        dx   = size * 2
+        dy   = int(size * 1.73)
+        for row in range(-1, H // dy + 2):
+            for col in range(-1, W // dx + 2):
+                cx = col * dx + (size if row % 2 else 0)
+                cy = row * dy
+                pts = [
+                    (cx + size * math.cos(math.radians(60 * k - 30)),
+                     cy + size * math.sin(math.radians(60 * k - 30)))
+                    for k in range(6)
+                ]
+                pygame.draw.polygon(pat, (0, 200, 212, alpha), pts, 1)
+        surf.blit(pat, (0, 0))
+
+    def _draw_p3r_panel(self, surf, x, y, w, h, alpha=235, accent=None):
+        """Panel P3R: fondo navy, borde teal fino, franja lateral teal."""
+        acc = accent or C.P3R_TEAL
+        bg = pygame.Surface((w, h), pygame.SRCALPHA)
+        bg.fill((*C.P3R_PANEL, alpha))
+        surf.blit(bg, (x, y))
+        # Franja lateral izquierda teal
+        pygame.draw.rect(surf, acc, (x, y, 4, h))
+        # Borde exterior
+        pygame.draw.rect(surf, acc, (x, y, w, h), 1)
+        # Línea interna teal tenue
+        pygame.draw.rect(surf, C.P3R_DARK_TEAL, (x + 5, y + 1, w - 6, h - 2), 1)
+
+    def _draw_p3r_title_bar(self, surf, text, y, font=None, color=None):
+        """Barra de título P3R: fondo navy con borde teal + texto teal."""
+        W  = C.ANCHO_PANTALLA
+        cx = W // 2
+        fnt   = font  or self.font_title
+        color = color or C.P3R_TEAL
+        bar = pygame.Surface((W, 52), pygame.SRCALPHA)
+        bar.fill((*C.P3R_NAVY, 200))
+        surf.blit(bar, (0, y - 26))
+        # Líneas teal arriba y abajo
+        pygame.draw.line(surf, C.P3R_TEAL,    (40, y - 26), (W - 40, y - 26), 1)
+        pygame.draw.line(surf, C.P3R_TEAL,    (40, y + 26), (W - 40, y + 26), 1)
+        pygame.draw.line(surf, C.P3R_TEAL_DIM,(40, y - 24), (W - 40, y - 24), 1)
+        # Sombra + texto
+        sh = fnt.render(text, True, C.P3R_DARK_TEAL)
+        tx = fnt.render(text, True, color)
+        surf.blit(sh, sh.get_rect(center=(cx + 2, y + 2)))
+        surf.blit(tx, tx.get_rect(center=(cx, y)))
+
+    def _draw_arc_gauge(self, surf, cx, cy, radius, pct, color, bg_color,
+                        thickness=6, start_angle=-210, arc_span=240):
+        """Barra de HP/MP en forma de arco — estilo P3R.
+        pct en [0,1]. El arco va en sentido horario desde start_angle."""
+        # Fondo del arco (gris oscuro)
+        rect = pygame.Rect(cx - radius, cy - radius, radius * 2, radius * 2)
+        end_rad   = math.radians(-start_angle)
+        start_rad = math.radians(-(start_angle + arc_span))
+        pygame.draw.arc(surf, bg_color, rect, start_rad, end_rad, thickness)
+        # Relleno activo
+        if pct > 0.01:
+            fill_span = arc_span * pct
+            fill_end  = math.radians(-(start_angle))
+            fill_start= math.radians(-(start_angle + fill_span))
+            pygame.draw.arc(surf, color, rect, fill_start, fill_end, thickness)
+        # Punto de inicio y final
+        pygame.draw.circle(surf, color,    (cx, cy + radius - thickness // 2), thickness // 2)
+
+    def _draw_p3r_gradient_bg(self, surf):
+        """Fondo degradado P3R: navy oscuro con pulso de brillo suave."""
+        t   = (pygame.time.get_ticks() % 4000) / 4000.0
+        pulse = int(math.sin(t * math.pi * 2) * 4)
+        r1, g1, b1 = C.P3R_NAVY
+        r2, g2, b2 = C.P3R_BLUE_MID
+        H = C.ALTO_PANTALLA
+        for y in range(H):
+            lp = y / H
+            pygame.draw.line(surf,
+                (int(r1 + (r2-r1)*lp) + pulse,
+                 int(g1 + (g2-g1)*lp) + pulse,
+                 int(b1 + (b2-b1)*lp) + pulse),
+                (0, y), (C.ANCHO_PANTALLA, y))
+
     def draw_turn_banner(self, surf, text, color, timer):
-        """Banner de turno estilo Persona 5: franja diagonal que entra desde la izquierda."""
+        """Banner de turno P3R: panel navy con borde teal + barrido lateral + typewriter."""
         if timer <= 0:
             self._anim_reset("banner")
             self._prev_banner_text = ""
+            self._banner_chars_shown = 0
+            self._banner_char_timer  = 0
             return
 
-        # Reiniciar animación cuando cambia el texto del banner
         if text != self._prev_banner_text:
             self._anim_reset("banner")
-            self._prev_banner_text = text
+            self._prev_banner_text   = text
+            self._banner_chars_shown = 0
+            self._banner_char_timer  = 0
 
         W, H = C.ANCHO_PANTALLA, C.ALTO_PANTALLA
-        cy = H // 2
-
-        # t: 0=inicio slide, 1=posición final
-        t = self._anim_t("banner")
-        # Slide in desde la izquierda
-        offset_x = int((1 - t) * (-W))
-
-        # Alpha basado en timer (fade out al final)
+        cy   = H // 2
+        t    = self._anim_t("banner")
         alpha = min(255, timer * 6)
 
-        # Panel principal: rectángulo negro ligeramente inclinado
-        banner_h = 72
+        # Color de acento según bando
+        is_enemy = "ENEMIGO" in text.upper() or color == C.ROJO_HP
+        acc = C.P3R_ENEMY if is_enemy else C.P3R_ALLY
+
+        # Panel principal navy que barre desde la izquierda
+        banner_h = 68
         banner_y = cy - banner_h // 2
+        offset_x = int((1 - t) * (-W - 40))
 
-        panel = pygame.Surface((W + 80, banner_h + 20), pygame.SRCALPHA)
-        # Forma trapezoidal — corte diagonal en los extremos
-        pts = [(30, 0), (W + 79, 0), (W + 50, banner_h + 19), (0, banner_h + 19)]
-        pygame.draw.polygon(panel, (6, 6, 12, min(alpha, 220)), pts)
+        panel = pygame.Surface((W + 40, banner_h), pygame.SRCALPHA)
+        panel.fill((*C.P3R_NAVY, min(alpha, 230)))
+        surf.blit(panel, (offset_x, banner_y))
 
-        # Franja de acento de color (roja para enemigo, azul para aliado)
-        if color == C.ROJO_HP or "ENEMIGO" in text.upper():
-            strip_col = (*C.PERSONA_RED, min(alpha, 255))
-        else:
-            strip_col = (*C.PERSONA_ALLY, min(alpha, 255))
-        strip_pts = [(30, 0), (90, 0), (60, banner_h + 19), (0, banner_h + 19)]
-        pygame.draw.polygon(panel, strip_col, strip_pts)
+        # Franja de acento de color (izquierda)
+        strip_w = 10
+        pygame.draw.rect(surf, (*acc, min(alpha, 255)),
+                         (offset_x, banner_y, strip_w, banner_h))
 
-        # Líneas de acento
-        pygame.draw.line(panel, (*C.PERSONA_GOLD, min(alpha, 200)),
-                         (32, 3), (W + 65, 3), 2)
-        pygame.draw.line(panel, (*C.PERSONA_GOLD, min(alpha, 200)),
-                         (5, banner_h + 16), (W + 44, banner_h + 16), 2)
+        # Borde teal arriba y abajo
+        pygame.draw.line(surf, (*C.P3R_TEAL, min(alpha, 200)),
+                         (offset_x, banner_y), (W, banner_y), 2)
+        pygame.draw.line(surf, (*C.P3R_TEAL, min(alpha, 200)),
+                         (offset_x, banner_y + banner_h - 1),
+                         (W, banner_y + banner_h - 1), 2)
+        # Línea teal_dim secundaria
+        pygame.draw.line(surf, (*C.P3R_TEAL_DIM, min(alpha, 140)),
+                         (offset_x, banner_y + 2), (W, banner_y + 2), 1)
 
-        surf.blit(panel, (offset_x - 30, banner_y - 10))
+        # Typewriter: mostrar texto carácter a carácter
+        self._banner_char_timer += 1
+        if self._banner_char_timer >= 2:        # 1 char cada 2 frames
+            self._banner_char_timer = 0
+            self._banner_chars_shown = min(len(text), self._banner_chars_shown + 1)
+        visible_text = text[:self._banner_chars_shown]
 
-        # Texto principal con outline — posición centrada ajustada por slide
-        txt_x = W // 2 + offset_x
-        self._text_outline(surf, self.font_title, text,
-                           C.PERSONA_WHITE, (txt_x, cy),
-                           outline_col=(0, 0, 0), thickness=2)
+        txt_x = W // 2 + offset_x // 4   # sigue suavemente al panel
+        self._text_outline(surf, self.font_title, visible_text,
+                           C.P3R_WHITE, (txt_x, cy),
+                           outline_col=C.P3R_NAVY, thickness=2)
 
-        # Subtítulo más pequeño (número de turno implícito en el texto normalmente)
-        phase = "FASE ALIADA" if "ALIADO" in text.upper() or "ALLY" in text.upper() else "FASE ENEMIGA"
-        sub = self.font_mini.render(phase, True, (*C.PERSONA_GOLD[:3],))
-        surf.blit(sub, sub.get_rect(center=(txt_x + 2, cy + 26)))
+        # Subtítulo
+        phase_str = "FASE ALIADA" if not is_enemy else "FASE ENEMIGA"
+        sub = self.font_mini.render(phase_str, True, C.P3R_TEAL)
+        surf.blit(sub, sub.get_rect(center=(txt_x, cy + 26)))
 
     # -------------------------
     # Pantallas
@@ -238,69 +339,80 @@ class UIRenderer:
         W, H = C.ANCHO_PANTALLA, C.ALTO_PANTALLA
         cx = W // 2
 
-        # Fondo: degradado navy profundo
-        self._draw_gradient_bg(surf, 4, 6, 18, 12, 18, 45)
+        # Fondo navy P3R con pulso suave
+        self._draw_p3r_gradient_bg(surf)
+        # Patrón de hexágonos tenues
+        self._draw_hex_pattern(surf, alpha=16)
 
-        # Franja diagonal roja (Persona)
-        self._draw_diagonal_accent(surf, (160, 20, 20), alpha=45)
+        # Círculo decorativo grande en esquina superior derecha (motivo P3R)
+        t_glow = (pygame.time.get_ticks() % 3000) / 3000.0
+        glow_r = int(110 + math.sin(t_glow * math.pi * 2) * 8)
+        glow_surf = pygame.Surface((300, 300), pygame.SRCALPHA)
+        pygame.draw.circle(glow_surf, (*C.P3R_TEAL_DIM, 18), (150, 150), glow_r)
+        pygame.draw.circle(glow_surf, (*C.P3R_TEAL, 8),      (150, 150), glow_r, 2)
+        surf.blit(glow_surf, (W - 200, -60))
 
-        # Líneas horizontales decorativas
-        pygame.draw.line(surf, C.AMARILLO_AWK, (50, 82),  (W - 50, 82),  2)
-        pygame.draw.line(surf, (80, 90, 130),  (50, 84),  (W - 50, 84),  1)
-        pygame.draw.line(surf, (80, 90, 130),  (50, 178), (W - 50, 178), 1)
-        pygame.draw.line(surf, C.AMARILLO_AWK, (50, 180), (W - 50, 180), 2)
+        # Líneas horizontales teal decorativas
+        pygame.draw.line(surf, C.P3R_TEAL,    (40, 82),  (W - 40, 82),  2)
+        pygame.draw.line(surf, C.P3R_TEAL_DIM,(40, 84),  (W - 40, 84),  1)
+        pygame.draw.line(surf, C.P3R_TEAL_DIM,(40, 176), (W - 40, 176), 1)
+        pygame.draw.line(surf, C.P3R_TEAL,    (40, 178), (W - 40, 178), 2)
 
-        # Título con backing shape estilo Persona
-        self._draw_title_bar(surf, "ETERNIA  SRPG", 132)
+        # Título P3R
+        self._draw_p3r_title_bar(surf, "ETERNIA  SRPG", 130)
+        sub = self.font_std.render("— Victoria y Conquista —", True, C.P3R_TEAL_DIM)
+        surf.blit(sub, sub.get_rect(center=(cx, 163)))
 
-        # Subtítulo
-        sub = self.font_std.render("— Victoria y Conquista —", True, (160, 170, 200))
-        surf.blit(sub, sub.get_rect(center=(cx, 165)))
-
-        # Panel de opciones con estilo FE (doble borde)
+        # Panel de opciones P3R
         has_sv = state.get("has_save", False) if state else False
         opciones = [
-            ("[1]  Nueva PvP — Local",       C.BLANCO),
-            ("[2]  Nueva PvE — vs IA",        C.BLANCO),
-            ("[3]  Controles",                C.GRIS_INACTIVO),
-            ("[5]  Puntajes",                 (160, 170, 195)),
+            ("[1]  Nueva PvP — Local",       C.P3R_WHITE),
+            ("[2]  Nueva PvE — vs IA",        C.P3R_WHITE),
+            ("[3]  Controles",                (130, 150, 175)),
+            ("[5]  Puntajes",                 C.P3R_TEAL_DIM),
         ]
         if has_sv:
-            opciones.insert(0, ("[4]  Continuar run guardada", C.AMARILLO_AWK))
+            opciones.insert(0, ("[4]  Continuar run guardada", C.P3R_GOLD))
 
-        n_opts  = len(opciones)
-        box_w   = 340
-        box_h   = 30 + n_opts * 44 + 20
-        box_x   = cx - box_w // 2
-        box_y   = 198
-        self._draw_panel(surf, box_x, box_y, box_w, box_h,
-                         alpha=220, accent=C.AMARILLO_AWK)
+        n_opts = len(opciones)
+        box_w  = 350
+        box_h  = 28 + n_opts * 44 + 18
+        box_x  = cx - box_w // 2
+        box_y  = 194
+        self._draw_p3r_panel(surf, box_x, box_y, box_w, box_h, alpha=225)
 
         for i, (op, col) in enumerate(opciones):
-            oy = box_y + 30 + i * 44
+            oy = box_y + 28 + i * 44
+            # Fila resaltada para "Continuar"
             if has_sv and i == 0:
                 hl = pygame.Surface((box_w - 8, 36), pygame.SRCALPHA)
-                hl.fill((255, 200, 0, 25))
+                hl.fill((*C.P3R_TEAL, 20))
                 surf.blit(hl, (box_x + 4, oy - 8))
+            # Cursor teal pulsante en primera opción
+            if i == 0 and not has_sv:
+                pulse = abs(pygame.time.get_ticks() % 1000 - 500) / 500.0
+                cur_alpha = int(60 + pulse * 40)
+                cur_s = pygame.Surface((box_w - 8, 34), pygame.SRCALPHA)
+                cur_s.fill((*C.P3R_TEAL, cur_alpha))
+                surf.blit(cur_s, (box_x + 4, oy - 7))
             lbl = self.font_std.render(op, True, col)
             surf.blit(lbl, lbl.get_rect(center=(cx, oy)))
             if i < n_opts - 1:
-                pygame.draw.line(surf, (40, 55, 90),
+                pygame.draw.line(surf, C.P3R_DARK_TEAL,
                                  (box_x + 20, oy + 18), (box_x + box_w - 20, oy + 18), 1)
 
-        # Mejor puntaje (solo #1) — inline debajo del panel
+        # Mejor puntaje bajo el panel
         top = state.get("top_scores", []) if state else []
         if top:
-            e    = top[0]
+            e      = top[0]
             best_y = box_y + box_h + 10
-            self._draw_panel(surf, box_x, best_y, box_w, 34, alpha=185, accent=C.AMARILLO_AWK)
+            self._draw_p3r_panel(surf, box_x, best_y, box_w, 34, alpha=180)
             bs = self.font_mini.render(
                 f"① MEJOR  {e.get('total', 0):,}  pts   ×{e.get('maps', 0)} mapas   [{e.get('tier','?')[:3].upper()}]",
-                True, C.AMARILLO_AWK)
+                True, C.P3R_TEAL)
             surf.blit(bs, bs.get_rect(center=(cx, best_y + 17)))
 
-        # Hint inferior
-        hint = self.font_mini.render("Mapas y unidades configurables en  data/", True, (70, 80, 100))
+        hint = self.font_mini.render("Mapas y unidades configurables en  data/", True, (50, 70, 90))
         surf.blit(hint, hint.get_rect(center=(cx, H - 22)))
 
     def draw_all_scores(self, surf, top_scores: list):
@@ -622,126 +734,135 @@ class UIRenderer:
     # Panel de unidad — estilo Persona
     # -------------------------
     def draw_unit_panel(self, surf, unidad):
-        """Panel de estadísticas estilo Persona: acento de color por bando,
-        barras segmentadas, stats en tabla compacta, efectos como burbujas."""
+        """Panel P3R: navy profundo, acento teal/rojo por bando,
+        arco de HP, stats compactos, efectos como hexágonos."""
         if not unidad:
             return
 
-        pw, ph = 292, 148
+        pw, ph = 296, 150
         px, py = 8, C.ALTO_PANTALLA - ph - 8
 
-        # Color de acento según bando
-        acc = C.PERSONA_ALLY if unidad.bando == "aliado" else C.PERSONA_ENEMY
+        acc = C.P3R_ALLY if unidad.bando == "aliado" else C.P3R_ENEMY
 
-        # Fondo principal
+        # Fondo navy
         bg = pygame.Surface((pw, ph), pygame.SRCALPHA)
-        bg.fill((*C.PERSONA_PANEL, 245))
+        bg.fill((*C.P3R_PANEL, 248))
         surf.blit(bg, (px, py))
 
-        # Franja lateral de color (bando)
+        # Franja lateral de bando
         pygame.draw.rect(surf, acc, (px, py, 5, ph))
-        # Borde exterior
+        # Borde exterior teal/rojo
         pygame.draw.rect(surf, acc, (px, py, pw, ph), 1)
-        # Línea dorada de acento superior
-        pygame.draw.line(surf, C.PERSONA_GOLD, (px + 5, py + 1), (px + pw - 1, py + 1), 1)
+        # Línea interna teal_dim
+        pygame.draw.line(surf, C.P3R_TEAL_DIM, (px + 5, py + 1), (px + pw - 1, py + 1), 1)
 
-        # Portrait 44×44
+        # ── Portrait con marco circular ──────────────────────────────────────
         portrait = get_portrait_hud(
             getattr(unidad, "sprite_id", unidad.nombre.lower()),
             unidad.bando,
             unidad.color_base,
             letter=unidad.nombre[0]
         )
-        # Marco del portrait con color de bando
-        pygame.draw.rect(surf, acc, (px + 8, py + 8, 46, 46), 1)
-        surf.blit(portrait, (px + 9, py + 9))
+        port_cx, port_cy = px + 30, py + 32
+        # Clip circular del portrait
+        port_mask = pygame.Surface((44, 44), pygame.SRCALPHA)
+        pygame.draw.circle(port_mask, (255, 255, 255, 255), (22, 22), 22)
+        port_clipped = portrait.copy()
+        port_clipped.blit(port_mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+        surf.blit(port_clipped, (port_cx - 22, port_cy - 22))
+        # Marco circular del bando
+        pygame.draw.circle(surf, acc,           (port_cx, port_cy), 23, 2)
+        pygame.draw.circle(surf, C.P3R_TEAL_DIM,(port_cx, port_cy), 25, 1)
 
-        tx = px + 60
+        tx = px + 62
 
         # Nombre + nivel
-        nombre_txt = f"{unidad.nombre}"
-        nivel_txt  = f"Nv.{unidad.nivel}"
-        ns = self.font_ui_title.render(nombre_txt, True, C.PERSONA_WHITE)
-        nls = self.font_mini.render(nivel_txt, True, C.PERSONA_GOLD)
-        surf.blit(ns,  (tx, py + 6))
-        surf.blit(nls, (px + pw - nls.get_width() - 8, py + 8))
-
-        # Clase
+        ns  = self.font_ui_title.render(unidad.nombre, True, C.P3R_WHITE)
+        nls = self.font_mini.render(f"Nv.{unidad.nivel}", True, C.P3R_TEAL)
+        surf.blit(ns,  (tx, py + 5))
+        surf.blit(nls, (px + pw - nls.get_width() - 8, py + 7))
+        # Clase en teal apagado
         surf.blit(self.font_mini.render(
-            getattr(unidad, "clase", "").upper(), True, (110, 125, 155)),
-            (tx, py + 24))
+            getattr(unidad, "clase", "").upper(), True, C.P3R_TEAL_DIM),
+            (tx, py + 22))
 
-        # Barras HP / MP con etiqueta compacta
         bar_w = pw - tx + px - 10
         bar_x = tx
 
-        # HP
+        # ── HP con gradiente de color ────────────────────────────────────────
         hp_pct = max(0.0, unidad.hp_actual / unidad.max_hp) if unidad.max_hp > 0 else 0
-        hp_col  = C.VERDE_HP if hp_pct > 0.4 else (255, 200, 0) if hp_pct > 0.2 else C.ROJO_HP
-        hp_lbl  = self.font_mini.render(f"HP  {unidad.hp_actual}/{unidad.max_hp}", True, hp_col)
-        surf.blit(hp_lbl, (bar_x, py + 40))
-        self._draw_bar(surf, bar_x, py + 54, bar_w, 7,
-                       unidad.hp_actual, unidad.max_hp, hp_col, (40, 0, 0))
+        if hp_pct > 0.5:
+            hp_col = C.P3R_HP_HIGH
+        elif hp_pct > 0.25:
+            hp_col = C.P3R_HP_MID
+        else:
+            hp_col = C.P3R_HP_LOW
 
-        # MP
+        hp_lbl = self.font_mini.render(f"HP  {unidad.hp_actual}/{unidad.max_hp}", True, hp_col)
+        surf.blit(hp_lbl, (bar_x, py + 38))
+        self._draw_bar(surf, bar_x, py + 52, bar_w, 7,
+                       unidad.hp_actual, unidad.max_hp, hp_col, (15, 5, 5))
+
+        # ── MP ───────────────────────────────────────────────────────────────
         if unidad.max_mp > 0:
             mp_lbl = self.font_mini.render(
-                f"MP  {unidad.mp_actual}/{unidad.max_mp}", True, C.AZUL_MP)
-            surf.blit(mp_lbl, (bar_x, py + 64))
-            self._draw_bar(surf, bar_x, py + 78, bar_w, 5,
-                           unidad.mp_actual, unidad.max_mp, C.AZUL_MP, (0, 0, 40))
+                f"MP  {unidad.mp_actual}/{unidad.max_mp}", True, C.P3R_MP_BAR)
+            surf.blit(mp_lbl, (bar_x, py + 62))
+            self._draw_bar(surf, bar_x, py + 76, bar_w, 5,
+                           unidad.mp_actual, unidad.max_mp, C.P3R_MP_BAR, (5, 5, 20))
 
-        # Barra Awakening (solo héroes)
-        bar_offset_y = py + 86 if unidad.max_mp > 0 else py + 66
+        # ── Awakening ────────────────────────────────────────────────────────
+        bar_offset_y = py + 84 if unidad.max_mp > 0 else py + 64
         if unidad.es_heroe and getattr(unidad, "awakening_type", None):
             pct_awk = getattr(unidad, "awakening_meter", 0) / 100
-            awk_col  = C.PERSONA_GOLD if pct_awk >= 1.0 else (180, 140, 20)
-            awk_lbl  = self.font_mini.render("AWK", True, awk_col)
-            surf.blit(awk_lbl, (bar_x, bar_offset_y))
+            awk_col = C.P3R_GOLD if pct_awk >= 1.0 else C.P3R_TEAL_DIM
+            surf.blit(self.font_mini.render("AWK", True, awk_col), (bar_x, bar_offset_y))
             self._draw_bar(surf, bar_x + 30, bar_offset_y + 3, bar_w - 30, 4,
-                           int(pct_awk * 100), 100, awk_col, (30, 20, 0))
+                           int(pct_awk * 100), 100, awk_col, (10, 8, 0))
             bar_offset_y += 14
 
-        # Línea separadora antes de stats
-        pygame.draw.line(surf, (35, 40, 65),
+        # ── Separador ────────────────────────────────────────────────────────
+        pygame.draw.line(surf, C.P3R_DARK_TEAL,
                          (px + 8, bar_offset_y + 4), (px + pw - 8, bar_offset_y + 4), 1)
 
-        # Stats en dos columnas compactas
+        # ── Stats compactos ──────────────────────────────────────────────────
         stats_y = bar_offset_y + 8
-        stat_pairs = [
-            (f"STR {unidad.fuerza}",               f"DEF {unidad.defensa}"),
+        stat_col = (160, 185, 210)
+        for row_i, (s1, s2) in enumerate([
+            (f"STR {unidad.fuerza}",                f"DEF {unidad.defensa}"),
             (f"SPD {getattr(unidad,'velocidad',5)}", f"MOV {unidad.movimiento}"),
-        ]
-        for row_i, (s1, s2) in enumerate(stat_pairs):
+        ]):
             sy = stats_y + row_i * 14
             if sy + 12 < py + ph:
-                surf.blit(self.font_mini.render(s1, True, (190, 200, 215)), (tx, sy))
-                surf.blit(self.font_mini.render(s2, True, (190, 200, 215)), (tx + bar_w // 2, sy))
+                surf.blit(self.font_mini.render(s1, True, stat_col), (tx, sy))
+                surf.blit(self.font_mini.render(s2, True, stat_col), (tx + bar_w // 2, sy))
 
-        # Arma equipada (izquierda inferior)
-        arma_txt = (f"⚔ {unidad.arma_equipada.nombre}"
-                    if unidad.arma_equipada else "⚔ Puños")
-        arma_s = self.font_mini.render(arma_txt, True, (160, 170, 185))
-        surf.blit(arma_s, (px + 9, py + ph - 18))
+        # ── Arma equipada ────────────────────────────────────────────────────
+        arma_txt = f"⚔ {unidad.arma_equipada.nombre}" if unidad.arma_equipada else "⚔ Puños"
+        surf.blit(self.font_mini.render(arma_txt, True, (130, 155, 175)), (px + 9, py + ph - 18))
 
-        # Efectos de estado como burbujas circulares
+        # ── Efectos de estado como hexágonos ─────────────────────────────────
         if hasattr(unidad, "efectos") and unidad.efectos:
             for i, ef in enumerate(unidad.efectos[:5]):
-                ex = px + pw - 18 - i * 20
+                ex = px + pw - 16 - i * 22
                 ey = py + ph - 16
-                pygame.draw.circle(surf, ef.color, (ex, ey), 8)
-                pygame.draw.circle(surf, C.PERSONA_WHITE, (ex, ey), 8, 1)
-                lbl = self.font_mini.render(ef.etiqueta[0], True, C.PERSONA_WHITE)
-                surf.blit(lbl, lbl.get_rect(center=(ex, ey)))
+                # Hexágono pequeño
+                pts = [(ex + 8*math.cos(math.radians(60*k - 30)),
+                        ey + 8*math.sin(math.radians(60*k - 30))) for k in range(6)]
+                pygame.draw.polygon(surf, ef.color, pts)
+                pygame.draw.polygon(surf, C.P3R_WHITE, pts, 1)
+                surf.blit(self.font_mini.render(ef.etiqueta[0], True, C.P3R_WHITE),
+                          self.font_mini.render(ef.etiqueta[0], True, C.P3R_WHITE)
+                          .get_rect(center=(ex, ey)))
 
-        # Awakening activo — texto de estado en panel
+        # ── Awakening activo — banner pulsante ───────────────────────────────
         if getattr(unidad, "awakened", False):
             pulse = abs(pygame.time.get_ticks() % 800 - 400) / 400
-            aw_alpha = int(160 + pulse * 95)
-            aw_surf = pygame.Surface((pw - 10, 14), pygame.SRCALPHA)
-            aw_surf.fill((*C.PERSONA_GOLD, aw_alpha // 4))
-            surf.blit(aw_surf, (px + 5, py + ph - 32))
-            aw_s = self.font_mini.render("★ AWAKENING ACTIVO ★", True, C.PERSONA_GOLD)
+            aw_a  = int(140 + pulse * 90)
+            aw_bg = pygame.Surface((pw - 10, 14), pygame.SRCALPHA)
+            aw_bg.fill((*C.P3R_TEAL, aw_a // 6))
+            surf.blit(aw_bg, (px + 5, py + ph - 32))
+            aw_s = self.font_mini.render("★ AWAKENING ACTIVO ★", True, C.P3R_TEAL)
             surf.blit(aw_s, aw_s.get_rect(center=(px + pw // 2, py + ph - 25)))
 
     def _draw_bar(self, surf, x, y, w, h, val, max_val, fill_color, bg_color, label=None, font=None):
@@ -776,8 +897,8 @@ class UIRenderer:
     # Menús
     # -------------------------
     def draw_action_menu(self, surf, sel_unidad, thrones=None):
-        """Menú de acción estilo Persona 5: panel negro con franja roja lateral,
-        cada opción en fila con highlight rojo en la primera opción disponible."""
+        """Menú de acción P3R: panel navy con franja teal lateral,
+        bullet hexagonal como cursor, highlight teal en fila activa."""
         if not sel_unidad:
             self._anim_reset("action_menu")
             self._prev_action_unit_id = None
@@ -801,20 +922,20 @@ class UIRenderer:
 
         # Opciones con tecla, label, color especial
         opciones = [
-            ("A", "Atacar",      C.PERSONA_WHITE),
-            ("H", "Habilidad",   C.PERSONA_WHITE),
-            ("I", "Inventario",  C.PERSONA_WHITE),
-            ("E", "Esperar",     (160, 170, 185)),
+            ("A", "Atacar",      C.P3R_WHITE),
+            ("H", "Habilidad",   C.P3R_WHITE),
+            ("I", "Inventario",  C.P3R_WHITE),
+            ("E", "Esperar",     C.P3R_TEAL_DIM),
         ]
         if can_wake:
-            opciones.append(("W", "Awakening!", C.PERSONA_GOLD))
+            opciones.append(("W", "Awakening!", C.P3R_GOLD))
         if can_conquer:
             opciones.append(("C", "Conquistar", C.PURPURA_TRONO))
 
-        item_h   = 34
-        menu_w   = 158
-        menu_h   = len(opciones) * item_h + 10
-        strip_w  = 22   # ancho de la franja lateral roja
+        item_h  = 34
+        menu_w  = 162
+        menu_h  = len(opciones) * item_h + 10
+        strip_w = 20   # franja lateral teal
 
         # Posición — pegado a la unidad pero con margen
         raw_x = sel_unidad.x * C.TAMANO_TILE + 38
@@ -828,35 +949,40 @@ class UIRenderer:
         px = int(raw_x + slide_dir * menu_w * (1 - t))
         py = raw_y
 
-        # Fondo principal
+        # Fondo principal navy
         bg = pygame.Surface((menu_w, menu_h), pygame.SRCALPHA)
-        bg.fill((*C.PERSONA_PANEL, 240))
+        bg.fill((*C.P3R_PANEL, 245))
         surf.blit(bg, (px, py))
 
-        # Franja lateral roja
-        strip = pygame.Surface((strip_w, menu_h), pygame.SRCALPHA)
-        strip.fill((*C.PERSONA_RED, 255))
-        surf.blit(strip, (px, py))
-
-        # Borde exterior fino
-        pygame.draw.rect(surf, C.PERSONA_RED, (px, py, menu_w, menu_h), 1)
-        # Línea de acento dorada en la parte superior
-        pygame.draw.line(surf, C.PERSONA_GOLD,
+        # Franja lateral teal
+        pygame.draw.rect(surf, C.P3R_TEAL, (px, py, strip_w, menu_h))
+        # Borde exterior teal fino
+        pygame.draw.rect(surf, C.P3R_TEAL, (px, py, menu_w, menu_h), 1)
+        # Línea interna teal_dim en la parte superior
+        pygame.draw.line(surf, C.P3R_TEAL_DIM,
                          (px + strip_w, py + 1), (px + menu_w - 1, py + 1), 1)
 
         # Filas de opciones
         for i, (key, label, col) in enumerate(opciones):
             ry = py + 5 + i * item_h
 
-            # Fondo sutil en primera opción activa (Atacar)
+            # Highlight teal suave en primera opción
             if i == 0:
                 hl = pygame.Surface((menu_w - strip_w - 2, item_h - 2), pygame.SRCALPHA)
-                hl.fill((*C.PERSONA_RED, 35))
+                hl.fill((*C.P3R_TEAL, 28))
                 surf.blit(hl, (px + strip_w + 1, ry + 1))
 
-            # Tecla (en la franja roja)
-            ks = self.font_mini.render(key, True, C.PERSONA_WHITE)
-            surf.blit(ks, ks.get_rect(center=(px + strip_w // 2, ry + item_h // 2)))
+            # Bullet hexagonal pequeño en la franja teal (cursor)
+            hx_cx = px + strip_w // 2
+            hx_cy = ry + item_h // 2
+            hex_pts = [(hx_cx + 7*math.cos(math.radians(60*k - 30)),
+                        hx_cy + 7*math.sin(math.radians(60*k - 30))) for k in range(6)]
+            if i == 0:
+                pygame.draw.polygon(surf, C.P3R_NAVY, hex_pts)
+                pygame.draw.polygon(surf, C.P3R_WHITE, hex_pts, 1)
+            # Tecla dentro del hexágono
+            ks = self.font_mini.render(key, True, C.P3R_WHITE)
+            surf.blit(ks, ks.get_rect(center=(hx_cx, hx_cy)))
 
             # Label
             ls = self.font_std.render(label, True, col)
@@ -864,7 +990,7 @@ class UIRenderer:
 
             # Separador entre ítems
             if i < len(opciones) - 1:
-                pygame.draw.line(surf, (30, 30, 45),
+                pygame.draw.line(surf, C.P3R_DARK_TEAL,
                                  (px + strip_w + 4, ry + item_h - 1),
                                  (px + menu_w - 4,  ry + item_h - 1), 1)
 
@@ -943,68 +1069,85 @@ class UIRenderer:
         surf.blit(hint, (px + pw - hint.get_width() - 10, py + ph - 18))
 
     def draw_skills_menu(self, surf, sel_unidad):
-        """Habilidades estilo Persona: cada skill con burbuja de costo MP y estado de disponibilidad."""
+        """Habilidades P3R: tarjetas navy con franja teal, badge MP circular, descripción de efecto."""
         if not sel_unidad:
             self._anim_reset("skill_menu")
             return
 
         t = self._anim_t("skill_menu")
         W, H = C.ANCHO_PANTALLA, C.ALTO_PANTALLA
-        pw, ph = 460, min(320, 60 + len(sel_unidad.habilidades) * 50 + 20)
+        pw, ph = 460, min(330, 64 + len(sel_unidad.habilidades) * 52 + 24)
         px = W // 2 - pw // 2
         # Slide desde abajo
         py = int(H // 2 - ph // 2 + (H - H // 2 + ph) * (1 - t))
 
-        self._draw_persona_panel(surf, px, py, pw, ph,
-                                 "HABILIDADES", accent=C.AZUL_MP)
+        # Panel base P3R
+        self._draw_p3r_panel(surf, px, py, pw, ph, alpha=248, accent=C.P3R_TEAL)
+        # Barra de título
+        tbar = pygame.Surface((pw - 5, 28), pygame.SRCALPHA)
+        tbar.fill((*C.P3R_TEAL, 55))
+        surf.blit(tbar, (px + 5, py))
+        pygame.draw.line(surf, C.P3R_TEAL, (px + 5, py + 28), (px + pw - 1, py + 28), 1)
+        ts = self.font_ui_title.render("HABILIDADES", True, C.P3R_WHITE)
+        surf.blit(ts, (px + 14, py + 5))
 
         for i, sk in enumerate(sel_unidad.habilidades):
-            ry = py + 34 + i * 48
+            ry = py + 36 + i * 52
             tiene_mp = sel_unidad.mp_actual >= sk.costo_mp
 
-            # Fondo de fila
-            row_bg = pygame.Surface((pw - 8, 42), pygame.SRCALPHA)
-            row_bg.fill((255, 255, 255, 6) if i % 2 == 0 else (0, 0, 0, 0))
-            surf.blit(row_bg, (px + 4, ry + 3))
+            # Tarjeta de habilidad: fondo alternado sutil
+            card = pygame.Surface((pw - 10, 46), pygame.SRCALPHA)
+            card.fill((*C.P3R_BLUE_MID, 18) if i % 2 == 0 else (0, 0, 0, 0))
+            surf.blit(card, (px + 5, ry))
+            # Borde izquierdo de tarjeta en teal si tiene MP
+            if tiene_mp:
+                pygame.draw.rect(surf, C.P3R_TEAL_DIM, (px + 5, ry, 2, 46))
 
             # Nombre de habilidad
-            col = C.PERSONA_WHITE if tiene_mp else (80, 85, 100)
+            col = C.P3R_WHITE if tiene_mp else (70, 80, 100)
             surf.blit(self.font_std.render(sk.nombre, True, col), (px + 14, ry + 4))
 
-            # Rango e tipo abajo
-            rango_txt = f"Rango {sk.rango[0]}–{sk.rango[1]}   {sk.tipo_efecto.upper()}"
-            surf.blit(self.font_mini.render(rango_txt, True, (110, 125, 150)), (px + 16, ry + 24))
+            # Línea de descripción de efecto
+            efecto_txt = sk.tipo_efecto.upper()
+            if hasattr(sk, "efecto") and sk.efecto:
+                efecto_txt += f"  +{sk.efecto}"
+            rango_txt = f"Rango {sk.rango[0]}–{sk.rango[1]}  ·  {efecto_txt}"
+            surf.blit(self.font_mini.render(rango_txt, True, C.P3R_TEAL_DIM if tiene_mp else (50, 60, 80)),
+                      (px + 16, ry + 26))
 
-            # Burbuja de costo MP a la derecha
-            mp_col   = C.AZUL_MP if tiene_mp else (50, 55, 80)
-            mp_str   = f"{sk.costo_mp} MP"
-            bubble_w = 52
-            bubble_x = px + pw - bubble_w - 12
-            bubble_y = ry + 10
-            bub = pygame.Surface((bubble_w, 22), pygame.SRCALPHA)
-            pygame.draw.rect(bub, (*mp_col, 180 if tiene_mp else 80), (0, 0, bubble_w, 22), border_radius=11)
-            surf.blit(bub, (bubble_x, bubble_y))
-            ms = self.font_mini.render(mp_str, True, C.PERSONA_WHITE)
-            surf.blit(ms, ms.get_rect(center=(bubble_x + bubble_w // 2, bubble_y + 11)))
+            # Badge MP circular a la derecha
+            mp_col   = C.P3R_MP_BAR if tiene_mp else (40, 50, 75)
+            mp_str   = f"{sk.costo_mp}MP"
+            badge_r  = 18
+            badge_cx = px + pw - badge_r - 14
+            badge_cy = ry + 23
+            badge_bg = pygame.Surface((badge_r*2, badge_r*2), pygame.SRCALPHA)
+            pygame.draw.circle(badge_bg, (*mp_col, 180 if tiene_mp else 70), (badge_r, badge_r), badge_r)
+            pygame.draw.circle(badge_bg, (*C.P3R_TEAL, 100 if tiene_mp else 30), (badge_r, badge_r), badge_r, 1)
+            surf.blit(badge_bg, (badge_cx - badge_r, badge_cy - badge_r))
+            ms = self.font_mini.render(mp_str, True, C.P3R_WHITE)
+            surf.blit(ms, ms.get_rect(center=(badge_cx, badge_cy)))
 
-            # Separador
+            # Separador teal
             if i < len(sel_unidad.habilidades) - 1:
-                pygame.draw.line(surf, (35, 35, 60),
-                                 (px + 10, ry + 46), (px + pw - 10, ry + 46), 1)
+                pygame.draw.line(surf, C.P3R_DARK_TEAL,
+                                 (px + 12, ry + 50), (px + pw - 12, ry + 50), 1)
 
-        # MP actual del héroe
-        mp_bar_y = py + ph - 24
+        # Barra inferior: MP actual + hint
+        bar_y = py + ph - 22
+        mp_pct = sel_unidad.mp_actual / sel_unidad.max_mp if sel_unidad.max_mp > 0 else 0
         mp_txt = f"MP  {sel_unidad.mp_actual} / {sel_unidad.max_mp}"
-        surf.blit(self.font_mini.render(mp_txt, True, C.AZUL_MP), (px + 14, mp_bar_y))
-        hint = self.font_mini.render("ESC  Volver", True, (80, 90, 110))
-        surf.blit(hint, (px + pw - hint.get_width() - 10, mp_bar_y))
+        surf.blit(self.font_mini.render(mp_txt, True, C.P3R_MP_BAR), (px + 14, bar_y))
+        self._draw_bar(surf, px + 14 + 90, bar_y + 3, 100, 4,
+                       sel_unidad.mp_actual, sel_unidad.max_mp, C.P3R_MP_BAR, (5, 5, 20))
+        hint = self.font_mini.render("ESC  Volver", True, C.P3R_TEAL_DIM)
+        surf.blit(hint, (px + pw - hint.get_width() - 10, bar_y))
 
     # -------------------------
     # Diálogo de batalla — estilo Persona
     # -------------------------
     def draw_battle_dialogue(self, surf, payload: dict):
-        """Diálogo de batalla estilo Persona: backing shape diagonal,
-        portrait con marco de color, nombre en barra de acento."""
+        """Diálogo de batalla P3R: panel navy con franja teal, portrait circular, typewriter cursor."""
         if not payload or not payload.get("active"):
             self._anim_reset("dialogue")
             return
@@ -1016,104 +1159,123 @@ class UIRenderer:
 
         unit_id = payload.get("unit_id", "")
         bando   = "aliado" if "ALLY" in unit_id else "enemigo"
-        acc     = C.PERSONA_ALLY if bando == "aliado" else C.PERSONA_ENEMY
+        acc     = C.P3R_ALLY if bando == "aliado" else C.P3R_ENEMY
 
         t = self._anim_t("dialogue")
 
         W, H   = C.ANCHO_PANTALLA, C.ALTO_PANTALLA
-        box_h  = 106
+        box_h  = 110
         margin = 14
         bw     = W - margin * 2
         # Slide desde abajo
         by = int((H - box_h - margin) + (box_h + margin) * (1 - t))
         bx = margin
 
-        # Fondo principal con forma trapezoidal (borde derecho cortado en diagonal)
+        # Fondo navy P3R
         panel = pygame.Surface((bw, box_h), pygame.SRCALPHA)
-        pts = [(0, 0), (bw - 30, 0), (bw, box_h), (0, box_h)]
-        pygame.draw.polygon(panel, (*C.PERSONA_PANEL, 245), pts)
+        panel.fill((*C.P3R_PANEL, 248))
         surf.blit(panel, (bx, by))
 
-        # Franja de color de acento (bando) a la izquierda
-        stripe = pygame.Surface((8, box_h), pygame.SRCALPHA)
-        stripe.fill((*acc, 255))
-        surf.blit(stripe, (bx, by))
+        # Franja lateral teal
+        pygame.draw.rect(surf, C.P3R_TEAL, (bx, by, 6, box_h))
 
-        # Borde superior con acento dorado
-        pygame.draw.line(surf, C.PERSONA_GOLD, (bx, by), (bx + bw - 32, by), 2)
-        pygame.draw.line(surf, acc, (bx, by + 1), (bx + bw - 32, by + 1), 1)
+        # Borde superior teal + línea secundaria
+        pygame.draw.line(surf, C.P3R_TEAL,    (bx, by),     (bx + bw, by),     2)
+        pygame.draw.line(surf, C.P3R_TEAL_DIM,(bx, by + 2), (bx + bw, by + 2), 1)
+        # Borde inferior
+        pygame.draw.line(surf, C.P3R_DARK_TEAL,(bx, by + box_h - 1), (bx + bw, by + box_h - 1), 1)
 
-        # Portrait con marco cuadrado de color
+        # Portrait circular
         portrait = get_portrait_hud(
             unit_id.lower(), bando,
             letter=speaker[0] if speaker else "?"
         )
-        port_x, port_y = bx + 12, by + 8
-        pygame.draw.rect(surf, acc, (port_x - 2, port_y - 2, 52, 52), 1)
-        surf.blit(portrait, (port_x, port_y))
+        port_cx = bx + 38
+        port_cy = by + box_h // 2
+        port_r  = 28
+        # Clip circular
+        port_mask = pygame.Surface((port_r*2, port_r*2), pygame.SRCALPHA)
+        pygame.draw.circle(port_mask, (255, 255, 255, 255), (port_r, port_r), port_r)
+        port_clipped = portrait.copy()
+        port_clipped.blit(port_mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+        surf.blit(port_clipped, (port_cx - port_r, port_cy - port_r))
+        # Marco circular de bando
+        pygame.draw.circle(surf, acc,            (port_cx, port_cy), port_r + 2, 2)
+        pygame.draw.circle(surf, C.P3R_TEAL_DIM, (port_cx, port_cy), port_r + 4, 1)
 
-        # Barra de nombre (backing shape pequeño)
-        name_bar = pygame.Surface((180, 22), pygame.SRCALPHA)
-        name_pts = [(0, 0), (175, 0), (165, 22), (0, 22)]
-        pygame.draw.polygon(name_bar, (*acc, 210), name_pts)
-        surf.blit(name_bar, (bx + 68, by + 4))
-        ns = self.font_ui_title.render(speaker, True, C.PERSONA_WHITE)
-        surf.blit(ns, (bx + 74, by + 5))
+        # Nombre: placa teal a la derecha del portrait
+        name_x = bx + port_r * 2 + 20
+        name_bg = pygame.Surface((170, 22), pygame.SRCALPHA)
+        name_bg.fill((*acc, 55))
+        surf.blit(name_bg, (name_x, by + 6))
+        pygame.draw.line(surf, acc, (name_x, by + 28), (name_x + 170, by + 28), 1)
+        ns = self.font_ui_title.render(speaker, True, C.P3R_WHITE)
+        surf.blit(ns, (name_x + 6, by + 6))
 
         # Texto del diálogo
-        text_x = bx + 68
-        text_y = by + 30
-        lines  = wrap_text(text, self.font_std, bw - 90)[:3]
+        text_x = name_x + 2
+        text_y = by + 34
+        lines  = wrap_text(text, self.font_std, bw - name_x + bx - 20)[:3]
         for i, line in enumerate(lines):
-            surf.blit(self.font_std.render(line, True, C.PERSONA_WHITE),
+            surf.blit(self.font_std.render(line, True, C.P3R_WHITE),
                       (text_x, text_y + i * 24))
 
-        # Indicador de continuar (parpadeante)
-        tick_on = (pygame.time.get_ticks() // 450) % 2 == 0
+        # Cursor parpadeante teal
+        tick_on = (pygame.time.get_ticks() // 420) % 2 == 0
         if tick_on:
-            cont = self.font_mini.render("▼", True, C.PERSONA_GOLD)
-            surf.blit(cont, (bx + bw - 48, by + box_h - 18))
+            cont = self.font_mini.render("▼", True, C.P3R_TEAL)
+            surf.blit(cont, (bx + bw - 22, by + box_h - 18))
 
     # -------------------------
     # Log de combate — estilo Persona
     # -------------------------
     def draw_combat_log(self, surf, log_lines: list):
-        """Log de combate: panel lateral derecho con entradas de color por tipo de evento."""
+        """Log de combate P3R: panel navy lateral derecho, franja teal, entradas con color semántico."""
         if not log_lines:
             return
 
-        lw = 218
-        lh = len(log_lines) * 19 + 14
+        lw = 222
+        lh = len(log_lines) * 19 + 16
         lx = C.ANCHO_PANTALLA - lw - 6
         ly = 6
 
-        # Fondo con borde de acento
+        # Fondo navy
         bg = pygame.Surface((lw, lh), pygame.SRCALPHA)
-        bg.fill((*C.PERSONA_PANEL, 210))
+        bg.fill((*C.P3R_PANEL, 215))
         surf.blit(bg, (lx, ly))
-        pygame.draw.rect(surf, (50, 55, 80), (lx, ly, lw, lh), 1)
-        # Franja superior dorada (marca visual)
-        pygame.draw.line(surf, C.PERSONA_GOLD, (lx, ly), (lx + lw, ly), 1)
-        # Franja izquierda
-        pygame.draw.rect(surf, (45, 50, 75), (lx, ly, 3, lh))
+        # Borde teal
+        pygame.draw.rect(surf, C.P3R_TEAL, (lx, ly, lw, lh), 1)
+        # Franja superior teal (línea de cabecera)
+        pygame.draw.line(surf, C.P3R_TEAL,    (lx, ly),     (lx + lw, ly),     2)
+        pygame.draw.line(surf, C.P3R_TEAL_DIM,(lx, ly + 2), (lx + lw, ly + 2), 1)
+        # Franja izquierda teal
+        pygame.draw.rect(surf, C.P3R_TEAL, (lx, ly, 3, lh))
 
         for i, line in enumerate(log_lines):
-            # Color por contenido de la línea
+            # Color semántico por contenido
             if any(k in line for k in ("crítico", "CRIT", "★")):
-                col = C.PERSONA_GOLD
+                col = C.P3R_GOLD
             elif any(k in line for k in ("derrota", "muere", "eliminado", "KO")):
-                col = C.PERSONA_RED
+                col = C.P3R_ENEMY
             elif any(k in line for k in ("cura", "HP+", "restaura")):
-                col = C.VERDE_HP
+                col = C.P3R_HP_HIGH
             elif any(k in line for k in ("MP", "habilidad", "skill")):
-                col = C.AZUL_MP
+                col = C.P3R_MP_BAR
+            elif any(k in line for k in ("esquiva", "falla", "miss")):
+                col = C.P3R_TEAL_DIM
             else:
                 # Entradas más recientes más brillantes
-                brightness = int(180 + (i / max(len(log_lines) - 1, 1)) * 65)
-                col = (brightness, brightness, brightness)
+                alpha = int(160 + (i / max(len(log_lines) - 1, 1)) * 75)
+                col = (alpha, alpha + 10, alpha + 20)
+
+            # Flash teal en la entrada más reciente
+            if i == len(log_lines) - 1:
+                flash = pygame.Surface((lw - 5, 17), pygame.SRCALPHA)
+                flash.fill((*C.P3R_TEAL, 18))
+                surf.blit(flash, (lx + 4, ly + 6 + i * 19 - 1))
 
             surf.blit(self.font_mini.render(line, True, col),
-                      (lx + 6, ly + 6 + i * 19))
+                      (lx + 7, ly + 7 + i * 19))
 
     # -------------------------
     # Mini-mapa
@@ -1220,30 +1382,30 @@ class UIRenderer:
         W, H = C.ANCHO_PANTALLA, C.ALTO_PANTALLA
         cx = W // 2
 
-        # Fondo navy + franja diagonal carmesí (Persona)
-        self._draw_gradient_bg(surf, 6, 8, 22, 14, 16, 40)
-        self._draw_diagonal_accent(surf, (140, 15, 15), alpha=50)
+        # Fondo P3R navy con hexágonos
+        self._draw_p3r_gradient_bg(surf)
+        self._draw_hex_pattern(surf, alpha=14)
 
-        # Título estilo Persona
-        self._draw_title_bar(surf, "ELIGE TU GRUPO", 40)
+        # Título P3R
+        self._draw_p3r_title_bar(surf, "ELIGE TU GRUPO", 38)
 
-        # Línea bajo título
-        pygame.draw.line(surf, C.AMARILLO_AWK, (50, 62), (W - 50, 62), 1)
+        # Líneas teal decorativas
+        pygame.draw.line(surf, C.P3R_TEAL,    (40, 58), (W - 40, 58), 2)
+        pygame.draw.line(surf, C.P3R_TEAL_DIM,(40, 60), (W - 40, 60), 1)
 
         heroes   = state.get("rogue_heroes", [])
         selected = state.get("rogue_selected", [])
         cursor   = state.get("rogue_cursor", 0)
 
         # Grid: máximo 4 columnas, 2 filas si hay más de 4 héroes
-        card_w, card_h = 160, 142
+        card_w, card_h = 160, 146
         spacing_x, spacing_y = 10, 10
         cols = 4
-        row_y0 = 72
+        row_y0 = 70
 
         for i, hero in enumerate(heroes):
             row = i // cols
             col_in_row = i % cols
-            # Centrar cada fila según cuántas cartas tiene
             heroes_this_row = min(cols, len(heroes) - row * cols)
             row_w = heroes_this_row * (card_w + spacing_x) - spacing_x
             row_x0 = (W - row_w) // 2
@@ -1254,76 +1416,80 @@ class UIRenderer:
             is_sel    = hero in selected
             is_cursor = (i == cursor)
 
-            # Fondo de la carta
+            # Fondo de la carta P3R
             card_surf = pygame.Surface((card_w, card_h), pygame.SRCALPHA)
             if is_sel:
-                card_surf.fill((28, 48, 85, 235))
+                card_surf.fill((*C.P3R_BLUE_MID, 90))
             elif is_cursor:
-                card_surf.fill((22, 32, 62, 220))
+                card_surf.fill((*C.P3R_PANEL, 220))
             else:
-                card_surf.fill((12, 16, 36, 165))
+                card_surf.fill((*C.P3R_NAVY, 160))
             surf.blit(card_surf, (hx, hy))
 
-            # Borde exterior
-            bw   = 3 if is_sel else 2 if is_cursor else 1
-            bcol = C.AMARILLO_AWK if is_sel else (170, 195, 225) if is_cursor else (50, 70, 105)
+            # Borde exterior teal (seleccionado = dorado)
+            bw   = 2 if is_sel or is_cursor else 1
+            bcol = C.P3R_GOLD if is_sel else C.P3R_TEAL if is_cursor else C.P3R_DARK_TEAL
             pygame.draw.rect(surf, bcol, (hx, hy, card_w, card_h), bw)
-            # Borde interior fino
-            if is_sel or is_cursor:
-                pygame.draw.rect(surf, (40, 60, 100),
+            # Línea interna teal_dim
+            if is_cursor or is_sel:
+                pygame.draw.rect(surf, C.P3R_DARK_TEAL,
                                  (hx + bw + 1, hy + bw + 1,
                                   card_w - (bw + 1)*2, card_h - (bw + 1)*2), 1)
 
-            # Franja de color de clase en la parte superior
-            stripe = pygame.Surface((card_w - bw*2, 5), pygame.SRCALPHA)
-            stripe.fill((*hero.color, 210))
-            surf.blit(stripe, (hx + bw, hy + bw))
+            # Franja superior teal (o color de clase si seleccionado)
+            top_col = hero.color if is_sel else C.P3R_TEAL if is_cursor else C.P3R_DARK_TEAL
+            pygame.draw.rect(surf, top_col, (hx + bw, hy + bw, card_w - bw*2, 4))
 
-            # Círculo del héroe
+            # Círculo del héroe — con halo teal si cursor
             circ_cx = hx + card_w // 2
-            circ_cy = hy + 38
-            pygame.draw.circle(surf, (8, 12, 28),   (circ_cx, circ_cy), 25)
-            pygame.draw.circle(surf, hero.color,     (circ_cx, circ_cy), 22)
-            pygame.draw.circle(surf, (220, 230, 255),(circ_cx, circ_cy), 22, 2)
-            ltr = self.font_ui_title.render(hero.nombre[0], True, C.BLANCO)
+            circ_cy = hy + 40
+            if is_cursor:
+                glow = pygame.Surface((60, 60), pygame.SRCALPHA)
+                pygame.draw.circle(glow, (*C.P3R_TEAL, 30), (30, 30), 30)
+                surf.blit(glow, (circ_cx - 30, circ_cy - 30))
+            pygame.draw.circle(surf, C.P3R_NAVY,     (circ_cx, circ_cy), 25)
+            pygame.draw.circle(surf, hero.color,      (circ_cx, circ_cy), 22)
+            ring_col = C.P3R_TEAL if is_cursor else (C.P3R_GOLD if is_sel else C.P3R_TEAL_DIM)
+            pygame.draw.circle(surf, ring_col,        (circ_cx, circ_cy), 23, 2)
+            ltr = self.font_ui_title.render(hero.nombre[0], True, C.P3R_WHITE)
             surf.blit(ltr, ltr.get_rect(center=(circ_cx, circ_cy)))
 
             # Nombre
-            ncol = C.AMARILLO_AWK if is_sel else C.BLANCO
+            ncol = C.P3R_GOLD if is_sel else C.P3R_WHITE
             ns = self.font_ui_title.render(hero.nombre, True, ncol)
-            surf.blit(ns, ns.get_rect(center=(hx + card_w // 2, hy + 70)))
+            surf.blit(ns, ns.get_rect(center=(hx + card_w // 2, hy + 72)))
 
             # Clase
-            cs = self.font_mini.render(hero.clase.upper(), True, (150, 170, 200))
-            surf.blit(cs, cs.get_rect(center=(hx + card_w // 2, hy + 85)))
+            cs = self.font_mini.render(hero.clase.upper(), True, C.P3R_TEAL_DIM)
+            surf.blit(cs, cs.get_rect(center=(hx + card_w // 2, hy + 87)))
 
-            # Separador
-            pygame.draw.line(surf, (45, 65, 100),
-                             (hx + 12, hy + 94), (hx + card_w - 12, hy + 94), 1)
+            # Separador teal
+            pygame.draw.line(surf, C.P3R_DARK_TEAL,
+                             (hx + 12, hy + 96), (hx + card_w - 12, hy + 96), 1)
 
             # Descripción con wrap
             for j, ln in enumerate(wrap_text(hero.descripcion, self.font_mini, card_w - 16)[:3]):
-                ds = self.font_mini.render(ln, True, (160, 175, 200))
-                surf.blit(ds, ds.get_rect(center=(hx + card_w // 2, hy + 106 + j * 13)))
+                ds = self.font_mini.render(ln, True, (140, 165, 195))
+                surf.blit(ds, ds.get_rect(center=(hx + card_w // 2, hy + 108 + j * 13)))
 
-            # Check de seleccionado
+            # Check de seleccionado — círculo teal
             if is_sel:
                 chk_bg = pygame.Surface((20, 20), pygame.SRCALPHA)
-                pygame.draw.circle(chk_bg, (35, 170, 70, 230), (10, 10), 10)
+                pygame.draw.circle(chk_bg, (*C.P3R_TEAL, 220), (10, 10), 10)
                 surf.blit(chk_bg, (hx + card_w - 24, hy + 5))
-                ck = self.font_ui_title.render("✓", True, C.BLANCO)
+                ck = self.font_ui_title.render("✓", True, C.P3R_WHITE)
                 surf.blit(ck, ck.get_rect(center=(hx + card_w - 14, hy + 15)))
 
-        # --- Barra de instrucciones ---
+        # --- Barra de instrucciones P3R ---
         rows_used = (len(heroes) + cols - 1) // cols
         inst_y = row_y0 + rows_used * (card_h + spacing_y) + 6
         n = len(selected)
-        inst_col = C.AMARILLO_AWK if n >= MIN_HEROES else (140, 140, 140)
+        inst_col = C.P3R_TEAL if n >= MIN_HEROES else (100, 110, 130)
 
-        self._draw_panel(surf, 40, inst_y, W - 80, 54, alpha=200, accent=(80, 100, 150))
+        self._draw_p3r_panel(surf, 40, inst_y, W - 80, 54, alpha=210)
         sel_txt   = f"ESPACIO — Seleccionar / Deseleccionar    {n} / {MAX_HEROES} elegidos"
         start_txt = "[F]  Comenzar aventura" if n >= MIN_HEROES else f"Selecciona al menos {MIN_HEROES} héroes"
-        st = self.font_std.render(sel_txt,   True, C.BLANCO)
+        st = self.font_std.render(sel_txt,   True, C.P3R_WHITE)
         ft = self.font_std.render(start_txt, True, inst_col)
         surf.blit(st, st.get_rect(center=(cx, inst_y + 16)))
         surf.blit(ft, ft.get_rect(center=(cx, inst_y + 38)))
@@ -1332,12 +1498,12 @@ class UIRenderer:
         relics = state.get("rogue_relics", [])
         if relics:
             rel_y = inst_y + 62
-            self._draw_panel(surf, cx - 200, rel_y, 400, 22 + len(relics) * 18,
-                             alpha=170, accent=C.AMARILLO_AWK)
-            rt = self.font_mini.render("▸ Reliquias activas:", True, C.AMARILLO_AWK)
+            self._draw_p3r_panel(surf, cx - 200, rel_y, 400, 22 + len(relics) * 18,
+                                 alpha=180, accent=C.P3R_TEAL)
+            rt = self.font_mini.render("▸ Reliquias activas:", True, C.P3R_TEAL)
             surf.blit(rt, (cx - 190, rel_y + 5))
             for i, r in enumerate(relics):
-                rs = self.font_mini.render(f"  • {r.nombre}", True, C.BLANCO)
+                rs = self.font_mini.render(f"  • {r.nombre}", True, C.P3R_WHITE)
                 surf.blit(rs, (cx - 190, rel_y + 20 + i * 18))
 
     # -------------------------
@@ -1347,13 +1513,14 @@ class UIRenderer:
         W, H = C.ANCHO_PANTALLA, C.ALTO_PANTALLA
         cx = W // 2
 
-        # Fondo más oscuro / morado — evoca magia
-        self._draw_gradient_bg(surf, 8, 5, 22, 18, 10, 42)
-        self._draw_diagonal_accent(surf, (80, 20, 130), alpha=55)
+        # Fondo P3R navy con hexágonos
+        self._draw_p3r_gradient_bg(surf)
+        self._draw_hex_pattern(surf, alpha=14)
 
-        # Título
-        self._draw_title_bar(surf, "ELIGE UNA MEJORA", 40)
-        pygame.draw.line(surf, C.AMARILLO_AWK, (50, 62), (W - 50, 62), 1)
+        # Título P3R
+        self._draw_p3r_title_bar(surf, "ELIGE UNA MEJORA", 38)
+        pygame.draw.line(surf, C.P3R_TEAL,    (40, 58), (W - 40, 58), 2)
+        pygame.draw.line(surf, C.P3R_TEAL_DIM,(40, 60), (W - 40, 60), 1)
 
         choices       = state.get("relic_choices", [])
         cursor        = state.get("relic_cursor", 0)
@@ -1361,74 +1528,78 @@ class UIRenderer:
         show_acquired = state.get("show_acquired_relics", False)
 
         # Cartas de reliquias — centradas
-        card_w, card_h = 205, 210
+        card_w, card_h = 205, 212
         spacing = 24
         total_w = len(choices) * (card_w + spacing) - spacing
         start_x = cx - total_w // 2
-        card_y  = 80
+        card_y  = 78
 
         for i, relic in enumerate(choices):
             rx = start_x + i * (card_w + spacing)
             ry = card_y
             is_cursor = (i == cursor)
 
-            # Fondo carta
+            # Fondo carta navy
             card_bg = pygame.Surface((card_w, card_h), pygame.SRCALPHA)
-            card_bg.fill((18, 14, 38, 225) if is_cursor else (12, 10, 28, 190))
+            card_bg.fill((*C.P3R_PANEL, 235) if is_cursor else (*C.P3R_NAVY, 190))
             surf.blit(card_bg, (rx, ry))
 
-            # Borde
-            bcol = C.AMARILLO_AWK if is_cursor else (80, 60, 130)
-            bw   = 3 if is_cursor else 1
+            # Borde teal (cursor = oro)
+            bcol = C.P3R_GOLD if is_cursor else C.P3R_TEAL_DIM
+            bw   = 2 if is_cursor else 1
             pygame.draw.rect(surf, bcol, (rx, ry, card_w, card_h), bw)
             if is_cursor:
-                pygame.draw.rect(surf, (60, 45, 100),
-                                 (rx + 4, ry + 4, card_w - 8, card_h - 8), 1)
+                pygame.draw.rect(surf, C.P3R_DARK_TEAL,
+                                 (rx + 3, ry + 3, card_w - 6, card_h - 6), 1)
 
-            # Franja superior con color de reliquia
-            stripe = pygame.Surface((card_w - bw*2, 6), pygame.SRCALPHA)
-            stripe.fill((*relic.color, 220))
-            surf.blit(stripe, (rx + bw, ry + bw))
+            # Franja superior teal (o color de reliquia si cursor)
+            top_col = relic.color if is_cursor else C.P3R_TEAL_DIM
+            pygame.draw.rect(surf, top_col, (rx + bw, ry + bw, card_w - bw*2, 5))
 
-            # Círculo icono
+            # Círculo icono con halo teal pulsante si cursor
             icon_cx = rx + card_w // 2
-            icon_cy = ry + 48
-            # Halo exterior
-            pygame.draw.circle(surf, (*relic.color, 60),
-                               (icon_cx, icon_cy), 36)
-            pygame.draw.circle(surf, (12, 8, 28),   (icon_cx, icon_cy), 30)
-            pygame.draw.circle(surf, relic.color,    (icon_cx, icon_cy), 26)
-            pygame.draw.circle(surf, (230, 230, 255),(icon_cx, icon_cy), 26, 2)
-            ltr = self.font_title.render(relic.nombre[0], True, C.BLANCO)
+            icon_cy = ry + 50
+            if is_cursor:
+                pulse = abs(pygame.time.get_ticks() % 1600 - 800) / 800.0
+                halo_r = int(34 + pulse * 4)
+                halo = pygame.Surface((halo_r*2, halo_r*2), pygame.SRCALPHA)
+                pygame.draw.circle(halo, (*C.P3R_TEAL, int(30 + pulse * 20)),
+                                   (halo_r, halo_r), halo_r)
+                surf.blit(halo, (icon_cx - halo_r, icon_cy - halo_r))
+            pygame.draw.circle(surf, C.P3R_NAVY,     (icon_cx, icon_cy), 30)
+            pygame.draw.circle(surf, relic.color,     (icon_cx, icon_cy), 26)
+            ring_col = C.P3R_TEAL if is_cursor else C.P3R_TEAL_DIM
+            pygame.draw.circle(surf, ring_col,        (icon_cx, icon_cy), 27, 2)
+            ltr = self.font_title.render(relic.nombre[0], True, C.P3R_WHITE)
             surf.blit(ltr, ltr.get_rect(center=(icon_cx, icon_cy)))
 
-            # Nombre de la reliquia
-            ncol = C.AMARILLO_AWK if is_cursor else C.BLANCO
+            # Nombre
+            ncol = C.P3R_GOLD if is_cursor else C.P3R_WHITE
             ns = self.font_ui_title.render(relic.nombre, True, ncol)
-            surf.blit(ns, ns.get_rect(center=(rx + card_w // 2, ry + 90)))
+            surf.blit(ns, ns.get_rect(center=(rx + card_w // 2, ry + 92)))
 
-            # Separador
-            pygame.draw.line(surf, (60, 45, 100),
-                             (rx + 16, ry + 102), (rx + card_w - 16, ry + 102), 1)
+            # Separador teal
+            pygame.draw.line(surf, C.P3R_DARK_TEAL,
+                             (rx + 16, ry + 104), (rx + card_w - 16, ry + 104), 1)
 
             # Descripción
             for j, ln in enumerate(wrap_text(relic.descripcion, self.font_mini, card_w - 20)[:4]):
-                ds = self.font_mini.render(ln, True, (185, 180, 220))
-                surf.blit(ds, ds.get_rect(center=(rx + card_w // 2, ry + 116 + j * 18)))
+                ds = self.font_mini.render(ln, True, C.P3R_TEAL_DIM if is_cursor else (155, 170, 200))
+                surf.blit(ds, ds.get_rect(center=(rx + card_w // 2, ry + 118 + j * 18)))
 
-            # Flecha cursor
+            # Flecha cursor teal
             if is_cursor:
-                arr = self.font_ui_title.render("▼", True, C.AMARILLO_AWK)
+                arr = self.font_ui_title.render("▼", True, C.P3R_TEAL)
                 surf.blit(arr, arr.get_rect(center=(rx + card_w // 2, ry + card_h + 14)))
 
-        # Botón "Items adquiridos" — debajo de las cartas
+        # Botón "Items adquiridos"
         btn_y = card_y + card_h + 28
         if acquired:
-            btn_w, btn_h = 220, 32
+            btn_w, btn_h = 240, 32
             btn_x = cx - btn_w // 2
             btn_bg = pygame.Surface((btn_w, btn_h), pygame.SRCALPHA)
-            btn_col = C.AMARILLO_AWK if show_acquired else (100, 80, 150)
-            btn_bg.fill((*btn_col, 55))
+            btn_col = C.P3R_TEAL if show_acquired else C.P3R_TEAL_DIM
+            btn_bg.fill((*btn_col, 40))
             surf.blit(btn_bg, (btn_x, btn_y))
             pygame.draw.rect(surf, btn_col, (btn_x, btn_y, btn_w, btn_h), 1)
             arrow = "▲" if show_acquired else "▼"
@@ -1437,42 +1608,45 @@ class UIRenderer:
                 True, btn_col)
             surf.blit(btn_lbl, btn_lbl.get_rect(center=(cx, btn_y + btn_h // 2)))
 
-            # Panel desplegable de items adquiridos (bajo el botón)
+            # Panel desplegable
             if show_acquired:
                 t = self._anim_t("acquired_panel")
                 panel_w = 440
                 panel_h = 26 + len(acquired) * 26 + 10
                 panel_x = cx - panel_w // 2
-                # Slide desde abajo
                 panel_y = int(btn_y + btn_h + 4 + panel_h * (1 - t))
                 panel_clip_y = btn_y + btn_h + 4
 
-                # Dibujar solo en el área por debajo del botón
                 clip_rect = surf.get_clip()
                 surf.set_clip(pygame.Rect(0, panel_clip_y, W, H - panel_clip_y))
 
-                self._draw_persona_panel(surf, panel_x, panel_y, panel_w, panel_h,
-                                         "ITEMS ADQUIRIDOS", accent=C.AMARILLO_AWK)
+                self._draw_p3r_panel(surf, panel_x, panel_y, panel_w, panel_h,
+                                     alpha=240, accent=C.P3R_TEAL)
+                tbar2 = pygame.Surface((panel_w - 5, 24), pygame.SRCALPHA)
+                tbar2.fill((*C.P3R_TEAL, 40))
+                surf.blit(tbar2, (panel_x + 5, panel_y))
+                ts2 = self.font_ui_title.render("ITEMS ADQUIRIDOS", True, C.P3R_WHITE)
+                surf.blit(ts2, (panel_x + 12, panel_y + 3))
+
                 for i, r in enumerate(acquired):
-                    ry = panel_y + 30 + i * 26
-                    # Punto de color de la reliquia
-                    pygame.draw.circle(surf, r.color, (panel_x + 20, ry + 9), 6)
-                    pygame.draw.circle(surf, C.PERSONA_WHITE, (panel_x + 20, ry + 9), 6, 1)
-                    surf.blit(self.font_std.render(r.nombre, True, C.PERSONA_WHITE),
-                              (panel_x + 34, ry + 1))
-                    desc_s = self.font_mini.render(r.descripcion, True, (150, 160, 175))
-                    surf.blit(desc_s, (panel_x + panel_w - desc_s.get_width() - 10, ry + 5))
+                    ry2 = panel_y + 28 + i * 26
+                    pygame.draw.circle(surf, r.color,      (panel_x + 20, ry2 + 9), 6)
+                    pygame.draw.circle(surf, C.P3R_TEAL_DIM,(panel_x + 20, ry2 + 9), 7, 1)
+                    surf.blit(self.font_std.render(r.nombre, True, C.P3R_WHITE),
+                              (panel_x + 34, ry2 + 1))
+                    desc_s = self.font_mini.render(r.descripcion, True, C.P3R_TEAL_DIM)
+                    surf.blit(desc_s, (panel_x + panel_w - desc_s.get_width() - 10, ry2 + 5))
 
                 surf.set_clip(clip_rect)
             else:
                 self._anim_reset("acquired_panel")
 
-        # Barra de instrucciones inferior
+        # Barra de instrucciones inferior P3R
         inst_txt = "◄ ► Mover     ENTER Confirmar"
         if acquired:
             inst_txt += "     [TAB] Items adquiridos"
-        self._draw_panel(surf, 40, H - 46, W - 80, 32, alpha=190, accent=(80, 60, 130))
-        inst = self.font_std.render(inst_txt, True, (180, 175, 220))
+        self._draw_p3r_panel(surf, 40, H - 46, W - 80, 32, alpha=200, accent=C.P3R_TEAL)
+        inst = self.font_std.render(inst_txt, True, C.P3R_TEAL_DIM)
         surf.blit(inst, inst.get_rect(center=(cx, H - 30)))
 
     # -------------------------
@@ -1522,10 +1696,21 @@ class UIRenderer:
         preview_data   = state.get("battle_preview")
         log_lines      = state.get("combat_log", [])
 
+        # Clima: sincronizar tipo cuando cambia el mapa
+        weather = state.get("weather")
+        if weather != self._current_weather:
+            self._current_weather = weather
+            self._weather.set_weather(weather)
+
         # Mapa y extras
         self.draw_map(surf, grid)
         self.draw_thrones(surf, thrones)
         self.draw_items(surf, items_suelo)
+
+        # Efectos de clima (sobre el mapa, bajo las unidades)
+        dt = state.get("dt", 0.016)
+        self._weather.update(dt)
+        self._weather.draw(surf)
 
         # Rango de movimiento
         if estado == "SELECCIONADO":

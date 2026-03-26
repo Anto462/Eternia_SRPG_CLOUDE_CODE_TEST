@@ -977,6 +977,7 @@ class GameState:
             "mapa":            self.MAPA_DATA,
             "map_def":         self.map_def,
             "thrones":         self.thrones,
+            "weather":         getattr(self.map_def, "weather", None),
 
             "items_suelo":     self.ITEMS_SUELO,
             "unidades_vivas":  self.unidades_vivas,

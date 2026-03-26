@@ -26,5 +26,6 @@
   "rules": {
     "turn_limit": 40,
     "neutral_monsters": false
-  }
+  },
+  "weather": "snow"
 }

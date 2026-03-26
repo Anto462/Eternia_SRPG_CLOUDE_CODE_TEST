@@ -25,5 +25,6 @@
   "rules": {
     "turn_limit": 35,
     "neutral_monsters": false
-  }
+  },
+  "weather": "rain"
 }
