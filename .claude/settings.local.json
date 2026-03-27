@@ -13,7 +13,9 @@
       "Bash(do)",
       "Bash(mkdir -p \"$BASE/$hero/batlle&Ui\")",
       "Bash(mkdir -p \"$BASE/$hero/map\")",
-      "Bash(python3 -c \":*)"
+      "Bash(python3 -c \":*)",
+      "Bash(find 'c:\\\\Users\\\\Usuario\\\\Downloads\\\\cloude\\\\projects test\\\\EterniaSrpg' -type f \\\\\\(-name *.json -o -name *.py \\\\\\) -path */boss*)",
+      "Bash(grep -r \"boss\\\\|BOSS\\\\|Boss\" 'c:\\\\Users\\\\Usuario\\\\Downloads\\\\cloude\\\\projects test\\\\EterniaSrpg' --include=*.py --include=*.json)"
     ]
   }
 }

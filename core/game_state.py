@@ -14,6 +14,7 @@ import constants as C
 from systems.map_data      import (pick_random_map, pick_next_map,
                                     pick_enemies_for_difficulty, get_difficulty_tier,
                                     MAPS)
+from systems.boss_map_data import pick_boss_map
 from systems.items         import make_item, make_skill
 from systems.units         import make_unit
 from systems.dialogue_system import DialogueSystem
@@ -31,6 +32,20 @@ from systems.save_system   import save_run, load_save, delete_save, has_save
 
 GRILLA_ANCHO = C.GRILLA_ANCHO
 GRILLA_ALTO  = C.GRILLA_ALTO
+
+MAX_MAPS = 10   # Duración total de una run roguelike
+
+# IDs de todos los jefes disponibles en el pool
+_ALL_BOSS_IDS = [
+    "GOBLIN_OVERLORD", "IRON_MAMMOTH", "SHADOW_MAGE", "DRAGON_EMPEROR",
+    "BONE_EMPEROR", "ORC_WARLORD", "FROST_QUEEN", "INFERNAL_DEMON",
+    "SEA_COLOSSUS", "VOID_HERALD",
+]
+
+
+def _is_boss_slot(map_number: int) -> bool:
+    """Devuelve True si map_number corresponde a un mapa de jefe (índices 2, 5, 8)."""
+    return map_number % 3 == 2
 
 
 class GameState:
@@ -243,7 +258,14 @@ class GameState:
     def _do_advance(self):
         """Carga el siguiente mapa efectivamente (llamado tras elegir reliquia o directo)."""
         self.map_number += 1
-        next_map         = pick_next_map(self.map_number, self.last_map_name)
+        if _is_boss_slot(self.map_number):
+            next_map = pick_boss_map(self.rogue.used_boss_map_names)
+            if next_map:
+                self.rogue.used_boss_map_names.append(next_map.name)
+            else:
+                next_map = pick_next_map(self.map_number, self.last_map_name)
+        else:
+            next_map = pick_next_map(self.map_number, self.last_map_name)
         self._load_map(next_map)
 
     def _save_hero_snapshots(self):
@@ -274,13 +296,62 @@ class GameState:
             }
 
     def advance_to_next_map(self):
-        """Registra puntos, guarda snapshots de héroes y abre menú de mejoras."""
+        """Registra puntos, guarda snapshots de héroes y abre menú de mejoras (o VICTORIA final)."""
         hp_total = sum(u.hp_actual for u in self.unidades_vivas if u.bando == "aliado")
         tier     = get_difficulty_tier(self.map_number)
         self.score.on_map_clear(hp_total, tier)
         self.score.save_if_highscore(self.modo_juego)
         self._save_hero_snapshots()   # persistir niveles antes de descartar las unidades
+        # Mapa 9 (índice) = décimo mapa → run completa → victoria total
+        if self.map_number >= MAX_MAPS - 1:
+            delete_save()
+            self.estado_juego = "VICTORIA"
+            if self.audio:
+                self.audio.play_bgm("victory.mp3")
+            return
         self._open_relic_selection()
+
+    def _pick_next_boss(self) -> str:
+        """Elige un boss ID del pool que no haya sido usado en esta run."""
+        available = [b for b in _ALL_BOSS_IDS if b not in self.rogue.used_boss_ids]
+        if not available:
+            available = list(_ALL_BOSS_IDS)   # todos usados — reiniciar pool
+        import random as _rnd
+        chosen = _rnd.choice(available)
+        self.rogue.used_boss_ids.append(chosen)
+        return chosen
+
+    @staticmethod
+    def _scale_boss_for_map(unit, map_number: int):
+        """Escala stats del jefe según el slot de jefe (0, 1 o 2) en la run.
+        Slot 0 (mapa 2): stats base del JSON — primer jefe accesible.
+        Slot 1 (mapa 5): escala moderada — jefe de mitad de run.
+        Slot 2 (mapa 8): escala alta — jefe final de run.
+        """
+        boss_slot = max(0, min(2, (map_number - 2) // 3))
+
+        # Multiplicadores por slot: (hp, str, def, mp)
+        SLOT_MULTS = [
+            (1.00, 1.00, 1.00, 1.00),   # Slot 0: sin escala (mapa 2)
+            (1.35, 1.20, 1.15, 1.25),   # Slot 1: +35% HP, +20% STR (mapa 5)
+            (1.80, 1.50, 1.40, 1.60),   # Slot 2: +80% HP, +50% STR (mapa 8)
+        ]
+        hp_m, str_m, def_m, mp_m = SLOT_MULTS[boss_slot]
+
+        unit.max_hp    = max(1, round(unit.max_hp  * hp_m))
+        unit.hp_actual = unit.max_hp
+        unit.fuerza    = max(1, round(unit.fuerza  * str_m))
+        unit.defensa   = max(0, round(unit.defensa * def_m))
+        if unit.max_mp and mp_m > 1.0:
+            unit.max_mp    = max(0, round(unit.max_mp * mp_m))
+            unit.mp_actual = unit.max_mp
+
+        # SPD: +1 en slot 1, +2 en slot 2
+        if boss_slot >= 1:
+            unit.velocidad = max(1, getattr(unit, "velocidad", 5) + boss_slot)
+
+        # Nivel visual acorde al slot
+        unit.nivel = max(unit.nivel, [3, 8, 14][boss_slot])
 
     @staticmethod
     def _scale_enemy_for_map(unit, map_number: int):
@@ -441,15 +512,27 @@ class GameState:
                 for r in self.rogue.acquired_relics:
                     self.rogue.apply_relic_to_unit_single(r, u)
 
-        # Enemigos aleatorios según dificultad
+        is_boss_map = getattr(map_def, "is_boss", False)
         tier = get_difficulty_tier(self.map_number)
-        enemy_assignments = pick_enemies_for_difficulty(
-            tier, list(map_def.enemy_positions), self.map_number)
-        for unit_id, pos in enemy_assignments:
-            enemy = make_unit(unit_id, pos[0], pos[1], "enemigo",
-                              add_floating_text=self.fx.add_text)
-            self._scale_enemy_for_map(enemy, self.map_number)
-            self.unidades.append(enemy)
+
+        if is_boss_map:
+            # Mapa de jefe: un único jefe escalado en cada posición de enemigo
+            boss_id = self._pick_next_boss()
+            for pos in map_def.enemy_positions:
+                boss = make_unit(boss_id, pos[0], pos[1], "enemigo",
+                                 add_floating_text=self.fx.add_text)
+                boss.is_boss = True
+                self._scale_boss_for_map(boss, self.map_number)
+                self.unidades.append(boss)
+        else:
+            # Mapa normal: enemigos aleatorios según dificultad
+            enemy_assignments = pick_enemies_for_difficulty(
+                tier, list(map_def.enemy_positions), self.map_number)
+            for unit_id, pos in enemy_assignments:
+                enemy = make_unit(unit_id, pos[0], pos[1], "enemigo",
+                                  add_floating_text=self.fx.add_text)
+                self._scale_enemy_for_map(enemy, self.map_number)
+                self.unidades.append(enemy)
 
         self.idx_fase   = 0
         self.sel_unidad = None
@@ -462,21 +545,29 @@ class GameState:
 
         self.estado_juego = "NEUTRAL"
 
-        self.timer_transicion = 90
-        self.texto_transicion = f"TURNO {self.fase_actual.upper()}"
-        self.color_transicion = C.AZUL_MP if self.fase_actual == "aliado" else C.ROJO_HP
+        if is_boss_map:
+            self.timer_transicion = 150
+            self.texto_transicion = "¡JEFE APARECE!"
+            self.color_transicion = (200, 30, 30)
+        else:
+            self.timer_transicion = 90
+            self.texto_transicion = f"TURNO {self.fase_actual.upper()}"
+            self.color_transicion = C.AZUL_MP if self.fase_actual == "aliado" else C.ROJO_HP
 
         for u in self.unidades:
             if u.bando == self.fase_actual:
                 u.resetear_turno()
 
         if self.audio:
-            self.audio.play_bgm("exploration.mp3")
+            if is_boss_map:
+                self.audio.play_bgm("Boss.mp3")
+            else:
+                self.audio.play_bgm("exploration.mp3")
 
         self.score.set_difficulty(tier)
         save_run(self)          # auto-save al cargar cada mapa
 
-        tier_label = tier.upper()
+        tier_label = "JEFE" if is_boss_map else tier.upper()
         self._log(f"--- {map_def.name} [Mapa {self.map_number+1}] [{tier_label}] ---")
 
     # ===================================================
@@ -978,6 +1069,7 @@ class GameState:
             "map_def":         self.map_def,
             "thrones":         self.thrones,
             "weather":         getattr(self.map_def, "weather", None),
+            "is_boss_map":     getattr(self.map_def, "is_boss", False),
 
             "items_suelo":     self.ITEMS_SUELO,
             "unidades_vivas":  self.unidades_vivas,

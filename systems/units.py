@@ -135,6 +135,9 @@ class Unidad:
         self.awakened        = False
         self.awakening_timer = 0
 
+        # Jefe — determina escala visual 2× y lógica de boss
+        self.is_boss: bool = False
+
         # Efectos de estado
         self.efectos = []
 

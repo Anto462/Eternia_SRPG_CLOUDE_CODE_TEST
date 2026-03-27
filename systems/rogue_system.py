@@ -127,6 +127,9 @@ class RogueRunState:
     # Cuántas reliquias había cuando se guardó la última snapshot.
     # Permite aplicar solo las reliquias nuevas al restaurar.
     snapshot_relic_count: int           = 0
+    # Tracking de jefes y mapas de jefe ya usados en esta run (sin repetición).
+    used_boss_ids:       List[str]      = field(default_factory=list)
+    used_boss_map_names: List[str]      = field(default_factory=list)
 
     def add_relic(self, relic: Relic):
         self.acquired_relics.append(relic)

@@ -1,0 +1,21 @@
+{
+  "name": "Arena Ancestral",
+  "is_boss": true,
+  "grid_generator": "boss_ancient_arena",
+  "thrones": {},
+  "ally_spawns": [
+    {"unit_id": "HERO_ALLY",   "bando": "aliado", "pos": [10, 15]},
+    {"unit_id": "CLERIC_ALLY", "bando": "aliado", "pos": [9,  16]},
+    {"unit_id": "ARCHER_ALLY", "bando": "aliado", "pos": [11, 16]}
+  ],
+  "enemy_spawns": [
+    {"pos": [12, 2]}
+  ],
+  "items_spawn": [
+    {"pos": [12, 8],  "item_id": "POTION_G"},
+    {"pos": [12, 16], "item_id": "POTION_G"},
+    {"pos": [8,  12], "item_id": "SWORD_STEEL"}
+  ],
+  "rules": {"turn_limit": null, "neutral_monsters": false},
+  "weather": null
+}

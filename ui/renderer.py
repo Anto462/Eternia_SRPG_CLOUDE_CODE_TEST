@@ -1329,6 +1329,11 @@ class UIRenderer:
         frame_idx = (self._anim_tick // self._anim_speed) % len(frames)
         sprite    = frames[frame_idx]
 
+        # Jefe → usar siempre el frame 0 (idle estable) escalado a 2× (64×64).
+        # Usar frames[0] evita que la animación cambie a un sprite vecino en la hoja.
+        if getattr(u, "is_boss", False) and frames[0].get_width() <= C.TAMANO_TILE:
+            sprite = pygame.transform.scale(frames[0], (C.TAMANO_TILE * 2, C.TAMANO_TILE * 2))
+
         # Unidad inactiva → semitransparente
         if u.ha_actuado:
             sprite = sprite.copy()
@@ -1795,3 +1800,19 @@ class UIRenderer:
         surf.blit(self.font_mini.render(tier.upper(), True, color_tier), (13, 41))
         # Dot de color dificultad
         pygame.draw.circle(surf, color_tier, (9, 45), 3)
+
+        # Badge de jefe: pulsante en rojo vivo (esquina superior derecha)
+        if state.get("is_boss_map"):
+            W = C.ANCHO_PANTALLA
+            pulse = abs((self._anim_tick % 60) - 30) / 30.0   # 0.0..1.0
+            badge_r = int(180 + 75 * pulse)
+            badge_color = (badge_r, 20, 20)
+            badge_w, badge_h = 110, 28
+            bx = W - badge_w - 6
+            by = 6
+            self._draw_panel(surf, bx, by, badge_w, badge_h, alpha=220,
+                             accent=badge_color)
+            pygame.draw.rect(surf, badge_color, (bx, by, 4, badge_h))
+            label = self.font_std.render("! JEFE !", True, (255, 80, 80))
+            surf.blit(label, (bx + (badge_w - label.get_width()) // 2,
+                               by + (badge_h - label.get_height()) // 2))

@@ -1,0 +1,21 @@
+{
+  "name": "Ciudadela de Hielo",
+  "is_boss": true,
+  "grid_generator": "boss_ice_citadel",
+  "thrones": {},
+  "ally_spawns": [
+    {"unit_id": "HERO_ALLY",   "bando": "aliado", "pos": [4, 15]},
+    {"unit_id": "CLERIC_ALLY", "bando": "aliado", "pos": [3, 16]},
+    {"unit_id": "ARCHER_ALLY", "bando": "aliado", "pos": [5, 15]}
+  ],
+  "enemy_spawns": [
+    {"pos": [12, 3]}
+  ],
+  "items_spawn": [
+    {"pos": [10, 7],  "item_id": "POTION_G"},
+    {"pos": [10, 17], "item_id": "POTION_G"},
+    {"pos": [16, 12], "item_id": "LANCE_SILVER"}
+  ],
+  "rules": {"turn_limit": null, "neutral_monsters": false},
+  "weather": "blizzard"
+}

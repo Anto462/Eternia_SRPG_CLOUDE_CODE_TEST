@@ -1,0 +1,21 @@
+{
+  "name": "Fortaleza Oscura",
+  "is_boss": true,
+  "grid_generator": "boss_dark_fortress",
+  "thrones": {},
+  "ally_spawns": [
+    {"unit_id": "HERO_ALLY",   "bando": "aliado", "pos": [5, 15]},
+    {"unit_id": "CLERIC_ALLY", "bando": "aliado", "pos": [4, 16]},
+    {"unit_id": "ARCHER_ALLY", "bando": "aliado", "pos": [6, 16]}
+  ],
+  "enemy_spawns": [
+    {"pos": [12, 4]}
+  ],
+  "items_spawn": [
+    {"pos": [12, 7],  "item_id": "POTION_G"},
+    {"pos": [12, 17], "item_id": "POTION_G"},
+    {"pos": [16, 12], "item_id": "POTION_G"}
+  ],
+  "rules": {"turn_limit": null, "neutral_monsters": false},
+  "weather": "mist"
+}

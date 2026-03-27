@@ -143,5 +143,75 @@
     "efecto_estado": "aturdido",
     "efecto_prob": 30,
     "icono": "skill_strike"
+  },
+
+  "CATACLYSM": {
+    "nombre": "Cataclismo",
+    "costo_mp": 30,
+    "rango": [1, 3],
+    "poder": 28,
+    "tipo_efecto": "daño",
+    "efecto_estado": "quemado",
+    "efecto_prob": 70,
+    "icono": "skill_dark_bolt"
+  },
+  "TITAN_SMASH": {
+    "nombre": "Golpe Titánico",
+    "costo_mp": 15,
+    "rango": [1, 1],
+    "poder": 36,
+    "tipo_efecto": "daño",
+    "efecto_estado": null,
+    "icono": "skill_strike"
+  },
+  "ICE_STORM": {
+    "nombre": "Tormenta de Hielo",
+    "costo_mp": 25,
+    "rango": [1, 3],
+    "poder": 20,
+    "tipo_efecto": "daño",
+    "efecto_estado": "aturdido",
+    "efecto_prob": 65,
+    "icono": "skill_dark_bolt"
+  },
+  "GROUND_SHATTER": {
+    "nombre": "Terremoto",
+    "costo_mp": 20,
+    "rango": [1, 2],
+    "poder": 22,
+    "tipo_efecto": "daño",
+    "efecto_estado": "aturdido",
+    "efecto_prob": 80,
+    "icono": "skill_strike"
+  },
+  "SOUL_DRAIN": {
+    "nombre": "Drenar Alma",
+    "costo_mp": 18,
+    "rango": [1, 4],
+    "poder": 14,
+    "tipo_efecto": "daño",
+    "efecto_estado": "robo_str",
+    "efecto_prob": 90,
+    "icono": "skill_dark_bolt"
+  },
+  "DEATH_NOVA": {
+    "nombre": "Nova de Muerte",
+    "costo_mp": 28,
+    "rango": [1, 2],
+    "poder": 30,
+    "tipo_efecto": "daño",
+    "efecto_estado": "veneno",
+    "efecto_prob": 90,
+    "icono": "skill_dark_bolt"
+  },
+  "WARLORD_CRY": {
+    "nombre": "Grito del Señor de Guerra",
+    "costo_mp": 12,
+    "rango": [1, 1],
+    "poder": 0,
+    "tipo_efecto": "buff",
+    "efecto_estado": "fortalecido",
+    "efecto_prob": 100,
+    "icono": "skill_rally"
   }
 }

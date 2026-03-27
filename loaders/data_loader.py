@@ -38,12 +38,33 @@ def load_enemies() -> dict:
     return _load_json(os.path.join(_DATA, "units", "enemies.json"))
 
 
+def load_bosses() -> dict:
+    """Carga catálogo de jefes desde data/units/bosses.json."""
+    return _load_json(os.path.join(_DATA, "units", "bosses.json"))
+
+
 def load_units() -> dict:
-    """Carga aliados + enemigos en un único catálogo."""
+    """Carga aliados + enemigos + jefes en un único catálogo."""
     catalog = {}
     catalog.update(load_allies())
     catalog.update(load_enemies())
+    catalog.update(load_bosses())
     return catalog
+
+
+def load_boss_maps() -> list:
+    """Carga todos los archivos .json en data/maps/boss/. Retorna lista de dicts."""
+    maps_dir = os.path.join(_DATA, "maps", "boss")
+    if not os.path.exists(maps_dir):
+        return []
+    maps = []
+    for filename in sorted(os.listdir(maps_dir)):
+        if filename.endswith(".json"):
+            path = os.path.join(maps_dir, filename)
+            data = _load_json(path)
+            if data:
+                maps.append(data)
+    return maps
 
 
 def load_items() -> dict:

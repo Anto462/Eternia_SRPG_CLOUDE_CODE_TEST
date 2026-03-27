@@ -98,6 +98,7 @@ class MapDef:
     items_spawn: Dict[Coord, str]
     rules:       Dict[str, object]
     weather:     "str | None" = None     # clima estético del mapa (ver ui/weather.py)
+    is_boss:     bool          = False   # True → mapa de jefe
 
 
 # =================================================
@@ -482,7 +483,8 @@ def _json_to_mapdef(d: dict) -> "MapDef | None":
         mdef = MapDef(name=name, grid=grid, thrones=thrones,
                       spawns=spawns, enemy_positions=enemy_positions,
                       items_spawn=items_spawn, rules=rules,
-                      weather=d.get("weather", None))
+                      weather=d.get("weather", None),
+                      is_boss=bool(d.get("is_boss", False)))
         _validate_grid(grid, name)
         _validate_positions(mdef)
         return mdef
