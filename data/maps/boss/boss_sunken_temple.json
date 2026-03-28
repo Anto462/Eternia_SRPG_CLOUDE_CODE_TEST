@@ -1,0 +1,21 @@
+{
+  "name": "Templo Hundido",
+  "is_boss": true,
+  "grid_generator": "boss_sunken_temple",
+  "thrones": {},
+  "ally_spawns": [
+    {"unit_id": "HERO_ALLY",   "bando": "aliado", "pos": [10, 15]},
+    {"unit_id": "CLERIC_ALLY", "bando": "aliado", "pos": [11, 16]},
+    {"unit_id": "ARCHER_ALLY", "bando": "aliado", "pos": [12, 15]}
+  ],
+  "enemy_spawns": [
+    {"pos": [12, 2]}
+  ],
+  "items_spawn": [
+    {"pos": [ 9, 8],  "item_id": "POTION_G"},
+    {"pos": [15, 8],  "item_id": "POTION_G"},
+    {"pos": [12, 9],  "item_id": "LANCE_SILVER"}
+  ],
+  "rules": {"turn_limit": null, "neutral_monsters": false},
+  "weather": "rain"
+}

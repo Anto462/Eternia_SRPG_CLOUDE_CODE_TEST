@@ -1,0 +1,21 @@
+{
+  "name": "Ciudadela del Cielo",
+  "is_boss": true,
+  "grid_generator": "boss_sky_citadel",
+  "thrones": {},
+  "ally_spawns": [
+    {"unit_id": "HERO_ALLY",   "bando": "aliado", "pos": [10, 14]},
+    {"unit_id": "CLERIC_ALLY", "bando": "aliado", "pos": [12, 15]},
+    {"unit_id": "ARCHER_ALLY", "bando": "aliado", "pos": [11, 13]}
+  ],
+  "enemy_spawns": [
+    {"pos": [12, 3]}
+  ],
+  "items_spawn": [
+    {"pos": [ 8,  7], "item_id": "POTION_G"},
+    {"pos": [13, 12], "item_id": "POTION_G"},
+    {"pos": [ 9, 16], "item_id": "LANCE_SILVER"}
+  ],
+  "rules": {"turn_limit": null, "neutral_monsters": false},
+  "weather": "lightning"
+}

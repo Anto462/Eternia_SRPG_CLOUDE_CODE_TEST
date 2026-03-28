@@ -353,6 +353,10 @@ _GENERATORS = {
     "flat_with_wall": lambda: _gen_flat_with_wall(8, 6, 18),
 }
 
+# Registrar generadores adicionales (ver map_generators_extra.py)
+from systems.map_generators_extra import EXTRA_GENERATORS as _EXTRA
+_GENERATORS.update(_EXTRA)
+
 
 def _gen_flat_with_wall(wall_row=8, col_start=6, col_end=18) -> List[List[int]]:
     g = _flat()

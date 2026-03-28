@@ -365,11 +365,13 @@ class UIRenderer:
 
         # Panel de opciones P3R
         has_sv = state.get("has_save", False) if state else False
+        coins    = state.get("shop_coins", 0) if state else 0
         opciones = [
-            ("[1]  Nueva PvP — Local",       C.P3R_WHITE),
-            ("[2]  Nueva PvE — vs IA",        C.P3R_WHITE),
-            ("[3]  Controles",                (130, 150, 175)),
-            ("[5]  Puntajes",                 C.P3R_TEAL_DIM),
+            ("[1]  Nueva PvP — Local",                   C.P3R_WHITE),
+            ("[2]  Nueva PvE — vs IA",                   C.P3R_WHITE),
+            ("[3]  Controles",                            (130, 150, 175)),
+            ("[5]  Puntajes",                             C.P3R_TEAL_DIM),
+            (f"[6]  Tienda Permanente   ({coins:,} ✦)", C.P3R_GOLD),
         ]
         if has_sv:
             opciones.insert(0, ("[4]  Continuar run guardada", C.P3R_GOLD))
@@ -1655,6 +1657,172 @@ class UIRenderer:
         surf.blit(inst, inst.get_rect(center=(cx, H - 30)))
 
     # -------------------------
+    # Tienda permanente
+    # -------------------------
+    def draw_shop_menu(self, surf, state: dict):
+        """Tienda de mejoras permanentes — estilo P3R con lista scrollable."""
+        W, H   = C.ANCHO_PANTALLA, C.ALTO_PANTALLA
+        cx     = W // 2
+
+        self._draw_p3r_gradient_bg(surf)
+        self._draw_hex_pattern(surf, alpha=14)
+
+        # ── Cabecera ──────────────────────────────────────────────────────
+        self._draw_p3r_title_bar(surf, "TIENDA PERMANENTE", 52)
+        pygame.draw.line(surf, C.P3R_TEAL,     (40, 74), (W - 40, 74), 2)
+        pygame.draw.line(surf, C.P3R_TEAL_DIM, (40, 76), (W - 40, 76), 1)
+
+        coins      = state.get("shop_coins", 0)
+        items      = state.get("shop_items", [])
+        purchased  = state.get("shop_purchased", set())
+        cursor     = state.get("shop_cursor", 0)
+        bonuses    = state.get("shop_bonuses", {})
+
+        # Monedas disponibles — esquina superior derecha
+        coin_lbl = self.font_ui_title.render(f"Monedas:  {coins:,}", True, C.P3R_GOLD)
+        surf.blit(coin_lbl, (W - coin_lbl.get_width() - 30, 16))
+
+        # ── Panel de lista de ítems ───────────────────────────────────────
+        list_x, list_y = 20, 90
+        list_w, list_h = W - 300, H - 110
+        self._draw_p3r_panel(surf, list_x, list_y, list_w, list_h, alpha=220)
+
+        VISIBLE  = 10
+        scroll   = max(0, cursor - VISIBLE + 1)
+        row_h    = (list_h - 20) // VISIBLE
+
+        for i_vis in range(VISIBLE):
+            idx = scroll + i_vis
+            if idx >= len(items):
+                break
+            item   = items[idx]
+            ry     = list_y + 10 + i_vis * row_h
+            bought = item.item_id in purchased
+            active = idx == cursor
+
+            # Fondo de fila
+            row_col = (
+                (*C.P3R_TEAL, 45)      if active and not bought else
+                (*C.P3R_TEAL_DIM, 18) if active else
+                (30, 30, 50, 30)
+            )
+            row_surf = pygame.Surface((list_w - 10, row_h - 2), pygame.SRCALPHA)
+            row_surf.fill(row_col)
+            surf.blit(row_surf, (list_x + 5, ry))
+
+            # Indicador comprado
+            if bought:
+                chk = self.font_mini.render("[OK]", True, C.P3R_TEAL)
+                surf.blit(chk, (list_x + 10, ry + row_h // 2 - 5))
+                name_col = C.P3R_TEAL_DIM
+            else:
+                can_buy = coins >= item.price
+                name_col = C.P3R_WHITE if can_buy else (100, 100, 130)
+
+            # Nombre + precio
+            name_s  = self.font_std.render(item.name, True, name_col)
+            price_s = self.font_mini.render(
+                "COMPRADO" if bought else f"{item.price}  monedas",
+                True, C.P3R_TEAL if bought else (C.P3R_GOLD if (not bought and coins >= item.price) else (120, 100, 80))
+            )
+            surf.blit(name_s,  (list_x + 40, ry + 4))
+            surf.blit(price_s, (list_x + 40, ry + 22))
+
+            # Separador
+            if i_vis < VISIBLE - 1:
+                pygame.draw.line(surf, C.P3R_DARK_TEAL,
+                                 (list_x + 20, ry + row_h - 1),
+                                 (list_x + list_w - 20, ry + row_h - 1), 1)
+
+        # ── Panel de detalle del ítem seleccionado ────────────────────────
+        det_x, det_y = W - 270, 90
+        det_w, det_h = 255, H - 110
+        self._draw_p3r_panel(surf, det_x, det_y, det_w, det_h, alpha=230, accent=C.P3R_TEAL)
+
+        # Barra de título del panel
+        tbar = pygame.Surface((det_w - 5, 24), pygame.SRCALPHA)
+        tbar.fill((*C.P3R_TEAL, 50))
+        surf.blit(tbar, (det_x + 5, det_y))
+        det_title = self.font_ui_title.render("DETALLE", True, C.P3R_WHITE)
+        surf.blit(det_title, (det_x + 14, det_y + 3))
+
+        if 0 <= cursor < len(items):
+            sel   = items[cursor]
+            bought = sel.item_id in purchased
+            dy    = det_y + 34
+
+            # Nombre
+            name_big = self.font_std.render(sel.name, True,
+                                            C.P3R_TEAL if bought else C.P3R_WHITE)
+            surf.blit(name_big, (det_x + 12, dy)); dy += 26
+
+            # Estado
+            status_s = self.font_mini.render(
+                "COMPRADO" if bought else f"Precio:  {sel.price} monedas",
+                True, C.P3R_TEAL if bought else C.P3R_GOLD)
+            surf.blit(status_s, (det_x + 12, dy)); dy += 22
+            pygame.draw.line(surf, C.P3R_DARK_TEAL, (det_x + 10, dy), (det_x + det_w - 10, dy), 1)
+            dy += 8
+
+            # Descripción (word-wrap manual)
+            desc = sel.description
+            words, line, max_w = desc.split(), "", det_w - 24
+            for w in words:
+                test = (line + " " + w).strip()
+                if self.font_mini.size(test)[0] > max_w:
+                    s = self.font_mini.render(line, True, (160, 170, 200))
+                    surf.blit(s, (det_x + 12, dy)); dy += 16
+                    line = w
+                else:
+                    line = test
+            if line:
+                s = self.font_mini.render(line, True, (160, 170, 200))
+                surf.blit(s, (det_x + 12, dy)); dy += 22
+            pygame.draw.line(surf, C.P3R_DARK_TEAL, (det_x + 10, dy), (det_x + det_w - 10, dy), 1)
+            dy += 8
+
+            # Bonificaciones del ítem
+            stat_title = self.font_mini.render("BONIFICACIONES:", True, C.P3R_TEAL_DIM)
+            surf.blit(stat_title, (det_x + 12, dy)); dy += 16
+            stats = []
+            if sel.hp:        stats.append(f"+{sel.hp} HP")
+            if sel.mp:        stats.append(f"+{sel.mp} MP")
+            if sel.strength:  stats.append(f"+{sel.strength} STR")
+            if sel.defense:   stats.append(f"+{sel.defense} DEF")
+            if sel.speed:     stats.append(f"+{sel.speed} SPD")
+            if sel.movement:  stats.append(f"+{sel.movement} MOV")
+            if sel.start_level: stats.append(f"Nivel inicial {sel.start_level}")
+            if sel.coin_bonus:  stats.append(f"+{int(sel.coin_bonus*100)}% monedas")
+            for st in stats:
+                st_s = self.font_mini.render(f"  {st}", True, C.P3R_WHITE)
+                surf.blit(st_s, (det_x + 12, dy)); dy += 15
+
+        # ── Bonificaciones activas totales ────────────────────────────────
+        dy_bot = det_y + det_h - 100
+        pygame.draw.line(surf, C.P3R_DARK_TEAL,
+                         (det_x + 10, dy_bot), (det_x + det_w - 10, dy_bot), 1)
+        tot_lbl = self.font_mini.render("TOTAL ACTIVO:", True, C.P3R_TEAL_DIM)
+        surf.blit(tot_lbl, (det_x + 12, dy_bot + 6))
+        dy_bot += 22
+        active_stats = []
+        if bonuses.get("hp"):        active_stats.append(f"+{bonuses['hp']} HP")
+        if bonuses.get("mp"):        active_stats.append(f"+{bonuses['mp']} MP")
+        if bonuses.get("strength"):  active_stats.append(f"+{bonuses['strength']} STR")
+        if bonuses.get("defense"):   active_stats.append(f"+{bonuses['defense']} DEF")
+        if bonuses.get("speed"):     active_stats.append(f"+{bonuses['speed']} SPD")
+        if bonuses.get("movement"):  active_stats.append(f"+{bonuses['movement']} MOV")
+        if bonuses.get("coin_bonus"): active_stats.append(f"+{int(bonuses['coin_bonus']*100)}% coins")
+        if bonuses.get("start_level"): active_stats.append(f"Nivel {bonuses['start_level']} inicial")
+        for st in active_stats:
+            s = self.font_mini.render(f"  {st}", True, C.P3R_TEAL)
+            surf.blit(s, (det_x + 12, dy_bot)); dy_bot += 14
+
+        # ── Footer instrucciones ──────────────────────────────────────────
+        inst = self.font_mini.render(
+            "↑↓ Navegar    ENTER Comprar    ESC Volver", True, (70, 90, 110))
+        surf.blit(inst, inst.get_rect(center=(cx, H - 18)))
+
+    # -------------------------
     # Render principal
     # -------------------------
     def render(self, surf, state: dict):
@@ -1665,6 +1833,9 @@ class UIRenderer:
             return
         if estado == "MENU_PUNTAJES":
             self.draw_all_scores(surf, state.get("top_scores", []))
+            return
+        if estado == "MENU_TIENDA":
+            self.draw_shop_menu(surf, state)
             return
         if estado == "MENU_CONTROLES":
             self.draw_controls_menu(surf)

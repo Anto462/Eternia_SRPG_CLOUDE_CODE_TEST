@@ -1,0 +1,21 @@
+{
+  "name": "Cementerio Maldito",
+  "is_boss": true,
+  "grid_generator": "boss_cursed_graveyard",
+  "thrones": {},
+  "ally_spawns": [
+    {"unit_id": "HERO_ALLY",   "bando": "aliado", "pos": [10, 15]},
+    {"unit_id": "CLERIC_ALLY", "bando": "aliado", "pos": [12, 16]},
+    {"unit_id": "ARCHER_ALLY", "bando": "aliado", "pos": [11, 14]}
+  ],
+  "enemy_spawns": [
+    {"pos": [12, 3]}
+  ],
+  "items_spawn": [
+    {"pos": [ 8,  9], "item_id": "POTION_G"},
+    {"pos": [11, 15], "item_id": "POTION_G"},
+    {"pos": [11, 14], "item_id": "SWORD_STEEL"}
+  ],
+  "rules": {"turn_limit": null, "neutral_monsters": false},
+  "weather": "mist"
+}

@@ -28,6 +28,7 @@ from systems.rogue_system  import (RogueRunState, pick_relic_choices,
                                    get_hero_pool, MIN_HEROES, MAX_HEROES,
                                    ALL_RELICS)
 from systems.save_system   import save_run, load_save, delete_save, has_save
+from systems.shop_system   import PermanentShop, SHOP_ITEMS
 
 
 GRILLA_ANCHO = C.GRILLA_ANCHO
@@ -71,6 +72,10 @@ class GameState:
         self.relic_choices: list    = []    # 3 reliquias a mostrar
         self._relic_cursor    = 0
         self._show_acquired_relics: bool = False  # toggle panel de items adquiridos
+
+        # Tienda permanente (persiste entre sesiones)
+        self.shop         = PermanentShop()
+        self._shop_cursor = 0               # índice de ítem seleccionado en MENU_TIENDA
 
         self.estado_juego = "MENU_PRINCIPAL"
         if self.audio:
@@ -304,6 +309,7 @@ class GameState:
         self._save_hero_snapshots()   # persistir niveles antes de descartar las unidades
         # Mapa 9 (índice) = décimo mapa → run completa → victoria total
         if self.map_number >= MAX_MAPS - 1:
+            self.shop.award_coins(self.score.total_score)  # monedas por victoria completa
             delete_save()
             self.estado_juego = "VICTORIA"
             if self.audio:
@@ -511,6 +517,8 @@ class GameState:
                 # Héroe nuevo (murió el mapa anterior) o primera partida: aplicar todas las reliquias
                 for r in self.rogue.acquired_relics:
                     self.rogue.apply_relic_to_unit_single(r, u)
+                # Bonificaciones permanentes de la tienda (se basan en el snapshot desde aquí)
+                self.shop.apply_to_unit(u)
 
         is_boss_map = getattr(map_def, "is_boss", False)
         tier = get_difficulty_tier(self.map_number)
@@ -601,7 +609,7 @@ class GameState:
     # ===================================================
     def check_end_conditions(self):
         if self.estado_juego in ["MENU_PRINCIPAL","MENU_CONTROLES","GAME_OVER","VICTORIA","PAUSA",
-                                  "MENU_SELECCION_GRUPO","MENU_MEJORAS","MENU_PUNTAJES"]:
+                                  "MENU_SELECCION_GRUPO","MENU_MEJORAS","MENU_PUNTAJES","MENU_TIENDA"]:
             return
         vivos    = self.unidades_vivas
         aliados  = [u for u in vivos if u.bando == "aliado"]
@@ -609,6 +617,7 @@ class GameState:
         if not aliados:
             self.estado_juego = "GAME_OVER"
             self.score.save_if_highscore(self.modo_juego)
+            self.shop.award_coins(self.score.total_score)  # monedas incluso en derrota
             delete_save()           # run perdida → borra el guardado
             if self.audio:
                 self.audio.play_bgm("game_over.mp3")
@@ -642,11 +651,28 @@ class GameState:
                 self.continue_saved_run()
             elif k == pygame.K_5:
                 self.estado_juego = "MENU_PUNTAJES"
+            elif k == pygame.K_6:
+                self._shop_cursor = 0
+                self.estado_juego = "MENU_TIENDA"
             return
 
         # --- PANTALLA DE PUNTAJES ---
         if self.estado_juego == "MENU_PUNTAJES":
             if k == pygame.K_ESCAPE:
+                self.estado_juego = "MENU_PRINCIPAL"
+            return
+
+        # --- TIENDA PERMANENTE ---
+        if self.estado_juego == "MENU_TIENDA":
+            n = len(SHOP_ITEMS)
+            if k == pygame.K_UP:
+                self._shop_cursor = (self._shop_cursor - 1) % n
+            elif k == pygame.K_DOWN:
+                self._shop_cursor = (self._shop_cursor + 1) % n
+            elif k in (pygame.K_RETURN, pygame.K_SPACE):
+                item = SHOP_ITEMS[self._shop_cursor]
+                self.shop.buy(item.item_id)   # descuenta monedas si es posible
+            elif k == pygame.K_ESCAPE:
                 self.estado_juego = "MENU_PRINCIPAL"
             return
 
@@ -1101,4 +1127,11 @@ class GameState:
             "relic_cursor":    self._relic_cursor,
             "rogue_relics":    list(self.rogue.acquired_relics),
             "show_acquired_relics": self._show_acquired_relics,
+
+            # Tienda permanente
+            "shop_coins":    self.shop.coins,
+            "shop_items":    SHOP_ITEMS,
+            "shop_purchased": set(self.shop.purchased),
+            "shop_cursor":   self._shop_cursor,
+            "shop_bonuses":  self.shop.get_bonuses(),
         }

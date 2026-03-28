@@ -1,0 +1,30 @@
+{
+  "name": "Ruinas del Imperio",
+  "grid_generator": "imperial_ruins",
+  "thrones": {
+    "aliado":  [3, 15],
+    "enemigo": [21,  2]
+  },
+  "ally_spawns": [
+    {"unit_id": "HERO_ALLY",   "bando": "aliado", "pos": [2, 14]},
+    {"unit_id": "CLERIC_ALLY", "bando": "aliado", "pos": [3, 15]},
+    {"unit_id": "ARCHER_ALLY", "bando": "aliado", "pos": [4, 14]}
+  ],
+  "enemy_spawns": [
+    {"pos": [20,  2]},
+    {"pos": [21,  3]},
+    {"pos": [22,  2]},
+    {"pos": [20,  4]},
+    {"pos": [23,  1]}
+  ],
+  "items_spawn": [
+    {"pos": [12,  5], "item_id": "POTION_G"},
+    {"pos": [11, 12], "item_id": "LANCE_SILVER"},
+    {"pos": [ 6, 16], "item_id": "ANTIDOTE"}
+  ],
+  "rules": {
+    "turn_limit": null,
+    "neutral_monsters": false
+  },
+  "weather": null
+}

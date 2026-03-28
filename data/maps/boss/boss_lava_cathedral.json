@@ -1,0 +1,21 @@
+{
+  "name": "Catedral de Lava",
+  "is_boss": true,
+  "grid_generator": "boss_lava_cathedral",
+  "thrones": {},
+  "ally_spawns": [
+    {"unit_id": "HERO_ALLY",   "bando": "aliado", "pos": [10, 15]},
+    {"unit_id": "CLERIC_ALLY", "bando": "aliado", "pos": [10, 16]},
+    {"unit_id": "ARCHER_ALLY", "bando": "aliado", "pos": [14, 15]}
+  ],
+  "enemy_spawns": [
+    {"pos": [12, 1]}
+  ],
+  "items_spawn": [
+    {"pos": [ 9,  9], "item_id": "POTION_G"},
+    {"pos": [15,  9], "item_id": "POTION_G"},
+    {"pos": [ 9, 15], "item_id": "AXE_IRON"}
+  ],
+  "rules": {"turn_limit": null, "neutral_monsters": false},
+  "weather": "lightning"
+}

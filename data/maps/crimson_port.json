@@ -1,0 +1,29 @@
+{
+  "name": "Puerto Carmesí",
+  "grid_generator": "crimson_port",
+  "thrones": {
+    "aliado":  [4, 8],
+    "enemigo": [20, 0]
+  },
+  "ally_spawns": [
+    {"unit_id": "HERO_ALLY",   "bando": "aliado", "pos": [3,  7]},
+    {"unit_id": "CLERIC_ALLY", "bando": "aliado", "pos": [4,  8]},
+    {"unit_id": "ARCHER_ALLY", "bando": "aliado", "pos": [5,  6]}
+  ],
+  "enemy_spawns": [
+    {"pos": [20,  0]},
+    {"pos": [21,  0]},
+    {"pos": [23,  1]},
+    {"pos": [22,  5]}
+  ],
+  "items_spawn": [
+    {"pos": [12, 10], "item_id": "POTION_G"},
+    {"pos": [ 5, 10], "item_id": "LANCE_SILVER"},
+    {"pos": [ 7,  6], "item_id": "ANTIDOTE"}
+  ],
+  "rules": {
+    "turn_limit": null,
+    "neutral_monsters": false
+  },
+  "weather": "rain"
+}

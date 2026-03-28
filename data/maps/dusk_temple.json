@@ -1,0 +1,29 @@
+{
+  "name": "Templo del Crepúsculo",
+  "grid_generator": "dusk_temple",
+  "thrones": {
+    "aliado":  [8, 16],
+    "enemigo": [16,  1]
+  },
+  "ally_spawns": [
+    {"unit_id": "HERO_ALLY",   "bando": "aliado", "pos": [7, 15]},
+    {"unit_id": "CLERIC_ALLY", "bando": "aliado", "pos": [9, 16]},
+    {"unit_id": "ARCHER_ALLY", "bando": "aliado", "pos": [8, 14]}
+  ],
+  "enemy_spawns": [
+    {"pos": [15,  1]},
+    {"pos": [17,  2]},
+    {"pos": [13,  1]},
+    {"pos": [19,  1]}
+  ],
+  "items_spawn": [
+    {"pos": [12, 11], "item_id": "POTION_G"},
+    {"pos": [12, 13], "item_id": "POTION_G"},
+    {"pos": [ 8,  5], "item_id": "SWORD_STEEL"}
+  ],
+  "rules": {
+    "turn_limit": null,
+    "neutral_monsters": false
+  },
+  "weather": null
+}

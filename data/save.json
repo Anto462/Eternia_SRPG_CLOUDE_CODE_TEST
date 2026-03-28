@@ -1,11 +1,11 @@
 {
-  "map_number": 4,
-  "last_map_name": "Paso del Bosque",
+  "map_number": 2,
+  "last_map_name": "Cementerio Maldito",
   "modo_juego": "PVE",
   "score": {
-    "total": 4413,
-    "kills": 7,
-    "maps_cleared": 4
+    "total": 1779,
+    "kills": 2,
+    "maps_cleared": 2
   },
   "rogue": {
     "selected_heroes": [
@@ -15,19 +15,10 @@
     ],
     "acquired_relics": [
       {
-        "relic_id": "phylactery"
-      },
-      {
-        "relic_id": "caliz_guerra"
-      },
-      {
         "relic_id": "corazon_piedra"
       },
       {
-        "relic_id": "botas_mercurio"
-      },
-      {
-        "relic_id": "orbe_magia"
+        "relic_id": "filo_caos"
       }
     ],
     "score_multiplier": 1.0
@@ -36,18 +27,18 @@
     {
       "unit_id": "HERO_ALLY",
       "nombre": "Kael",
-      "x": 3,
-      "y": 8,
+      "x": 10,
+      "y": 15,
       "bando": "aliado",
-      "hp_actual": 50,
-      "max_hp": 50,
+      "hp_actual": 47,
+      "max_hp": 48,
       "mp_actual": 20,
-      "max_mp": 30,
-      "nivel": 5,
-      "exp": 80,
-      "fuerza": 11,
-      "defensa": 9,
-      "velocidad": 10,
+      "max_mp": 20,
+      "nivel": 3,
+      "exp": 35,
+      "fuerza": 14,
+      "defensa": 5,
+      "velocidad": 8,
       "movimiento": 5,
       "inventario": [
         {
@@ -64,42 +55,42 @@
     {
       "unit_id": "CLERIC_ALLY",
       "nombre": "Lyra",
-      "x": 3,
-      "y": 10,
+      "x": 12,
+      "y": 16,
       "bando": "aliado",
-      "hp_actual": 22,
+      "hp_actual": 35,
       "max_hp": 35,
-      "mp_actual": 37,
-      "max_mp": 45,
-      "nivel": 3,
-      "exp": 50,
-      "fuerza": 4,
-      "defensa": 3,
-      "velocidad": 7,
+      "mp_actual": 27,
+      "max_mp": 35,
+      "nivel": 1,
+      "exp": 25,
+      "fuerza": 8,
+      "defensa": 1,
+      "velocidad": 5,
       "movimiento": 4,
       "inventario": [
         {
-          "nombre": "Espada de Acero",
-          "item_id": "SWORD_STEEL"
+          "nombre": "Poción Grande",
+          "item_id": "POTION_G"
         }
       ],
-      "arma_equipada": "SWORD_STEEL"
+      "arma_equipada": null
     },
     {
       "unit_id": "ARCHER_ALLY",
       "nombre": "Ryn",
-      "x": 4,
-      "y": 9,
+      "x": 11,
+      "y": 14,
       "bando": "aliado",
-      "hp_actual": 29,
-      "max_hp": 39,
-      "mp_actual": 25,
-      "max_mp": 25,
-      "nivel": 4,
-      "exp": 45,
-      "fuerza": 9,
-      "defensa": 4,
-      "velocidad": 12,
+      "hp_actual": 37,
+      "max_hp": 37,
+      "mp_actual": 15,
+      "max_mp": 15,
+      "nivel": 2,
+      "exp": 5,
+      "fuerza": 12,
+      "defensa": 3,
+      "velocidad": 9,
       "movimiento": 5,
       "inventario": [
         {

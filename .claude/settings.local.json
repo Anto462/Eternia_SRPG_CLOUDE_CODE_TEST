@@ -15,7 +15,8 @@
       "Bash(mkdir -p \"$BASE/$hero/map\")",
       "Bash(python3 -c \":*)",
       "Bash(find 'c:\\\\Users\\\\Usuario\\\\Downloads\\\\cloude\\\\projects test\\\\EterniaSrpg' -type f \\\\\\(-name *.json -o -name *.py \\\\\\) -path */boss*)",
-      "Bash(grep -r \"boss\\\\|BOSS\\\\|Boss\" 'c:\\\\Users\\\\Usuario\\\\Downloads\\\\cloude\\\\projects test\\\\EterniaSrpg' --include=*.py --include=*.json)"
+      "Bash(grep -r \"boss\\\\|BOSS\\\\|Boss\" 'c:\\\\Users\\\\Usuario\\\\Downloads\\\\cloude\\\\projects test\\\\EterniaSrpg' --include=*.py --include=*.json)",
+      "Bash(ls -la \"c:\\\\Users\\\\Usuario\\\\Downloads\\\\cloude\\\\projects test\\\\EterniaSrpg\\\\ui\"\" 2>/dev/null || echo \"UI directory not found \")"
     ]
   }
 }

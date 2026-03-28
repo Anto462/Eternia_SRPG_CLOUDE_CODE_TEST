@@ -1,0 +1,30 @@
+{
+  "name": "Desfiladero del Trueno",
+  "grid_generator": "thunder_pass",
+  "thrones": {
+    "aliado":  [2, 10],
+    "enemigo": [22, 7]
+  },
+  "ally_spawns": [
+    {"unit_id": "HERO_ALLY",   "bando": "aliado", "pos": [1,  9]},
+    {"unit_id": "CLERIC_ALLY", "bando": "aliado", "pos": [2, 10]},
+    {"unit_id": "ARCHER_ALLY", "bando": "aliado", "pos": [1, 11]}
+  ],
+  "enemy_spawns": [
+    {"pos": [22,  6]},
+    {"pos": [23,  8]},
+    {"pos": [21,  7]},
+    {"pos": [22, 10]},
+    {"pos": [23,  6]}
+  ],
+  "items_spawn": [
+    {"pos": [8,  7], "item_id": "POTION_G"},
+    {"pos": [8, 10], "item_id": "ANTIDOTE"},
+    {"pos": [16, 9], "item_id": "AXE_IRON"}
+  ],
+  "rules": {
+    "turn_limit": 25,
+    "neutral_monsters": false
+  },
+  "weather": "lightning"
+}
